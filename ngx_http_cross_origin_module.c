@@ -15,65 +15,67 @@
 #include <ngx_http.h>
 
 
-#define SPACE ' '
-#define COMMA ','
+#define NGX_HTTP_CORS_DEFAULT_RESPONSE_CONTENT_TYPE "text/plain"
 
 
 typedef struct {
-    u_char    *name;
-    uint32_t   method;
-} ngx_http_corss_origin_method_name_t;
+    u_char                    *name;
+    uint32_t                   method;
+} ngx_http_cors_method_name_t;
 
-typedef struct ngx_http_cross_origin_val_s {
+
+typedef struct ngx_http_cors_val_s {
     ngx_uint_t                 hash;
     ngx_str_t                  value;
-} ngx_http_cross_origin_val_t;
+} ngx_http_cors_val_t;
+
 
 typedef struct {
-    ngx_flag_t  preflight;
-} ngx_http_cross_origin_ctx_t;
+    ngx_flag_t                 preflight;
+} ngx_http_cors_ctx_t;
+
 
 typedef struct {
-    ngx_array_t  *origin_list;
-    ngx_array_t  *method_list;
-    ngx_array_t  *header_list;
-    ngx_array_t  *expose_header_list;
-    ngx_uint_t    safe_methods;
-    ngx_flag_t    enable;
-    ngx_flag_t    origin_unbounded;
-    ngx_flag_t    method_unbounded;
-    ngx_flag_t    header_unbounded;
-    ngx_flag_t    support_credential;
-    time_t        max_age;
+    ngx_array_t               *origin_list;
+    ngx_array_t               *method_list;
+    ngx_array_t               *header_list;
+    ngx_array_t               *expose_header_list;
+    ngx_uint_t                 safe_methods;
+    ngx_flag_t                 enable;
+    ngx_flag_t                 origin_unbounded;
+    ngx_flag_t                 method_unbounded;
+    ngx_flag_t                 header_unbounded;
+    ngx_flag_t                 support_credential;
+    time_t                     max_age;
 
     ngx_str_t                  preflight_response_type;
     ngx_http_complex_value_t   preflight_response;
-} ngx_http_cross_origin_loc_conf_t;
+} ngx_http_cors_loc_conf_t;
 
 
-static ngx_int_t ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r);
-static ngx_table_elt_t * ngx_http_cross_origin_search_header(
+static ngx_int_t ngx_http_cors_rewrite_handler(ngx_http_request_t *r);
+static ngx_table_elt_t * ngx_http_cors_search_header(
         ngx_list_t *list, ngx_str_t *name);
-static ngx_array_t *ngx_http_cross_origin_search_multi_request_header(
+static ngx_array_t *ngx_http_cors_search_multi_request_header(
         ngx_http_request_t *r, ngx_str_t *name);
-static ngx_int_t ngx_http_cross_origin_search_list(ngx_array_t *arr, 
+static ngx_int_t ngx_http_cors_search_list(ngx_array_t *arr, 
         ngx_str_t *name, ngx_flag_t case_insensitive);
-static ngx_uint_t ngx_http_cross_origin_get_method(ngx_str_t *method);
-static ngx_int_t ngx_http_cross_origin_add_header(ngx_list_t *list, 
+static ngx_uint_t ngx_http_cors_get_method(ngx_str_t *method);
+static ngx_int_t ngx_http_cors_add_header(ngx_list_t *list, 
         ngx_str_t *key, ngx_str_t *value);
-static ngx_int_t ngx_http_cross_origin_search_string(ngx_str_t *string_array, 
+static ngx_int_t ngx_http_cors_search_string(ngx_str_t *string_array, 
         ngx_str_t *name, ngx_flag_t case_insensitive);
-static ngx_str_t *ngx_http_cross_origin_concatenate_list_value(
+static ngx_str_t *ngx_http_cors_concatenate_list_value(
         ngx_http_request_t *r, ngx_array_t *arr);
-static ngx_array_t *ngx_http_cross_origin_split_string(ngx_str_t *str, 
+static ngx_array_t *ngx_http_cors_split_string(ngx_str_t *str, 
         u_char separator, ngx_array_t *arr);
 
-static ngx_int_t ngx_http_cross_origin_filter(ngx_http_request_t *r);
+static ngx_int_t ngx_http_cors_filter(ngx_http_request_t *r);
 
-static void *ngx_http_cross_origin_create_conf(ngx_conf_t *cf);
-static char *ngx_http_cross_origin_merge_conf(ngx_conf_t *cf,
+static void *ngx_http_cors_create_conf(ngx_conf_t *cf);
+static char *ngx_http_cors_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
-static ngx_int_t ngx_http_cross_origin_init(ngx_conf_t *cf);
+static ngx_int_t ngx_http_cors_init(ngx_conf_t *cf);
 
 static char *ngx_http_cors_origin_list(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -83,91 +85,91 @@ static char *ngx_http_cors_header_list(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_cors_safe_methods(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
-static char *ngx_http_cors_expose_header_list(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
+static char *ngx_http_cors_expose_header_list(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static char *ngx_http_cors_preflight_response(ngx_conf_t *cf, 
         ngx_command_t *cmd, void *conf);
 
 
-static ngx_command_t  ngx_http_cross_origin_commands[] = {
+static ngx_command_t  ngx_http_cors_commands[] = {
 
     { ngx_string("cors"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_cross_origin_loc_conf_t, enable),
-      NULL},
+      offsetof(ngx_http_cors_loc_conf_t, enable),
+      NULL },
 
     { ngx_string("cors_origin_list"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_cors_origin_list,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
-      NULL},
+      NULL },
 
     { ngx_string("cors_method_list"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_cors_method_list,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
-      NULL},
+      NULL },
 
     { ngx_string("cors_header_list"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_cors_header_list,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
-      NULL},
+      NULL },
 
     { ngx_string("cors_safe_methods"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_cors_safe_methods,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
-      NULL},
+      NULL },
 
     { ngx_string("cors_expose_header_list"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
       ngx_http_cors_expose_header_list,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
-      NULL},
+      NULL },
 
     { ngx_string("cors_max_age"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_sec_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_cross_origin_loc_conf_t, max_age),
-      NULL},
+      offsetof(ngx_http_cors_loc_conf_t, max_age),
+      NULL },
 
     { ngx_string("cors_support_credential"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_cross_origin_loc_conf_t, support_credential),
-      NULL},
+      offsetof(ngx_http_cors_loc_conf_t, support_credential),
+      NULL },
 
     { ngx_string("cors_preflight_response"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_cors_preflight_response,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
-      NULL},
+      NULL },
 
     { ngx_string("cors_preflight_response_type"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_http_cross_origin_loc_conf_t, preflight_response_type),
-      NULL},
+      offsetof(ngx_http_cors_loc_conf_t, preflight_response_type),
+      NULL },
 
       ngx_null_command
 };
 
 
-static ngx_http_module_t  ngx_http_cross_origin_module_ctx = {
+static ngx_http_module_t  ngx_http_cors_module_ctx = {
     NULL,                                       /* preconfiguration */
-    ngx_http_cross_origin_init,                 /* postconfiguration */
+    ngx_http_cors_init,                         /* postconfiguration */
 
     NULL,                                       /* create main configuration */
     NULL,                                       /* init main configuration */
@@ -175,47 +177,53 @@ static ngx_http_module_t  ngx_http_cross_origin_module_ctx = {
     NULL,                                       /* create server configuration */
     NULL,                                       /* merge server configuration */
 
-    ngx_http_cross_origin_create_conf,          /* create location configuration */
-    ngx_http_cross_origin_merge_conf            /* merge location configuration */
+    ngx_http_cors_create_conf,                  /* create location configuration */
+    ngx_http_cors_merge_conf                    /* merge location configuration */
 };
 
 
-ngx_module_t  ngx_http_cross_origin_module = {
+ngx_module_t  ngx_http_cors_module = {
     NGX_MODULE_V1,
-    &ngx_http_cross_origin_module_ctx,     /* module context */
-    ngx_http_cross_origin_commands,        /* module directives */
-    NGX_HTTP_MODULE,                       /* module type */
-    NULL,                                  /* init master */
-    NULL,                                  /* init module */
-    NULL,                                  /* init process */
-    NULL,                                  /* init thread */
-    NULL,                                  /* exit thread */
-    NULL,                                  /* exit process */
-    NULL,                                  /* exit master */
+    &ngx_http_cors_module_ctx,                   /* module context */
+    ngx_http_cors_commands,                      /* module directives */
+    NGX_HTTP_MODULE,                             /* module type */
+    NULL,                                        /* init master */
+    NULL,                                        /* init module */
+    NULL,                                        /* init process */
+    NULL,                                        /* init thread */
+    NULL,                                        /* exit thread */
+    NULL,                                        /* exit process */
+    NULL,                                        /* exit master */
     NGX_MODULE_V1_PADDING
 };
 
 
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 
-static ngx_str_t request_origin_header = ngx_string("Origin");
-static ngx_str_t request_method_header = ngx_string("Access-Control-Request-Method");
-static ngx_str_t request_headers_header = ngx_string("Access-Control-Request-Headers");
+static ngx_str_t ngx_http_cors_request_origin_header = ngx_string("Origin");
+static ngx_str_t ngx_http_cors_request_method_header =
+    ngx_string("Access-Control-Request-Method");
+static ngx_str_t ngx_http_cors_request_headers_header =
+    ngx_string("Access-Control-Request-Headers");
 
-static ngx_str_t response_origin_header = ngx_string("Access-Control-Allow-Origin");
-static ngx_str_t response_credential_header = ngx_string("Access-Control-Allow-Credentials");
-static ngx_str_t response_max_age_header = ngx_string("Access-Control-Max-Age");
-static ngx_str_t response_method_header = ngx_string("Access-Control-Allow-Methods");
-static ngx_str_t response_headers_header = ngx_string("Access-Control-Allow-Headers");
-static ngx_str_t response_expose_headers_header = ngx_string("Access-Control-Expose-Headers");
+static ngx_str_t ngx_http_cors_response_origin_header =
+    ngx_string("Access-Control-Allow-Origin");
+static ngx_str_t ngx_http_cors_response_credential_header =
+    ngx_string("Access-Control-Allow-Credentials");
+static ngx_str_t ngx_http_cors_response_max_age_header =
+    ngx_string("Access-Control-Max-Age");
+static ngx_str_t ngx_http_cors_response_method_header =
+    ngx_string("Access-Control-Allow-Methods");
+static ngx_str_t ngx_http_cors_response_headers_header =
+    ngx_string("Access-Control-Allow-Headers");
+static ngx_str_t ngx_http_cors_response_expose_headers_header =
+    ngx_string("Access-Control-Expose-Headers");
 
-static ngx_str_t response_credential_true = ngx_string("true");
-
-#define DEFAULT_RESPONSE_CONTENT_TYPE "text/plain"
+static ngx_str_t ngx_http_cors_response_credential_true = ngx_string("true");
 
 
 /* case-sensitive */
-static ngx_str_t simple_methods[] = {
+static ngx_str_t ngx_http_cors_simple_methods[] = {
     ngx_string("GET"),
     ngx_string("HEAD"),
     ngx_string("POST"),
@@ -223,7 +231,7 @@ static ngx_str_t simple_methods[] = {
 };
 
 /* case-insensitive */
-static ngx_str_t simple_headers[] = {
+static ngx_str_t ngx_http_cors_simple_headers[] = {
     ngx_string("Accept"),
     ngx_string("Accept-Language"),
     ngx_string("Content-Language"),
@@ -242,7 +250,7 @@ static ngx_str_t simple_types[] = {
 #endif
 
 /* case-insensitive */
-static ngx_str_t simple_response_headers[] = {
+static ngx_str_t ngx_http_cors_simple_response_headers[] = {
     ngx_string("Cache-Control"),
     ngx_string("Content-Language"),
     ngx_string("Content-Type"),
@@ -253,7 +261,7 @@ static ngx_str_t simple_response_headers[] = {
 };
 
 
-static ngx_http_corss_origin_method_name_t  ngx_methods_names[] = {
+static ngx_http_cors_method_name_t  ngx_http_cors_methods_names[] = {
    { (u_char *) "GET",       (uint32_t) NGX_HTTP_GET },
    { (u_char *) "HEAD",      (uint32_t) NGX_HTTP_HEAD },
    { (u_char *) "POST",      (uint32_t) NGX_HTTP_POST },
@@ -275,7 +283,7 @@ static ngx_http_corss_origin_method_name_t  ngx_methods_names[] = {
 
 /* For Preflight Request */
 static ngx_int_t
-ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
+ngx_http_cors_rewrite_handler(ngx_http_request_t *r)
 {
     u_char                           *last;
     ngx_str_t                        *origin_name, str_max_age;
@@ -285,10 +293,10 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     ngx_array_t                      *headers;     /* array of ngx_table_elt_t */
     ngx_array_t                      *field_names; /* array of ngx_str_t */
     ngx_table_elt_t                  *h;
-    ngx_http_cross_origin_ctx_t      *ctx;
-    ngx_http_cross_origin_loc_conf_t *colcf;
+    ngx_http_cors_ctx_t      *ctx;
+    ngx_http_cors_loc_conf_t *colcf;
     
-    colcf = ngx_http_get_module_loc_conf(r, ngx_http_cross_origin_module);
+    colcf = ngx_http_get_module_loc_conf(r, ngx_http_cors_module);
 
     if (!colcf->enable) {
         goto leave;
@@ -302,8 +310,8 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
                    "http cross origin rewrite handler \"%V\"", &r->uri);
 
     /* Step 1 */
-    h = ngx_http_cross_origin_search_header(&r->headers_in.headers, 
-            &request_origin_header);
+    h = ngx_http_cors_search_header(&r->headers_in.headers, 
+            &ngx_http_cors_request_origin_header);
     if (h == NULL) {
         goto leave;
     }
@@ -311,14 +319,14 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
 
     /* An OPTIONS request with Origin header is treadted
      * to be preflight request */
-    ctx = ngx_http_get_module_ctx(r, ngx_http_cross_origin_module);
+    ctx = ngx_http_get_module_ctx(r, ngx_http_cors_module);
     if (ctx == NULL) {
-        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_cross_origin_ctx_t));
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_cors_ctx_t));
         if (ctx == NULL){
             return NGX_ERROR;
         }
 
-        ngx_http_set_ctx(r, ctx, ngx_http_cross_origin_module);
+        ngx_http_set_ctx(r, ctx, ngx_http_cors_module);
     }
 
     if (ctx->preflight) {
@@ -328,7 +336,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
 
     /* Step 2 */
     if (!colcf->origin_unbounded) {
-        if (!ngx_http_cross_origin_search_list(colcf->origin_list, origin_name, 0)) {
+        if (!ngx_http_cors_search_list(colcf->origin_list, origin_name, 0)) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                     "http cross origin header not include in the list of origin");
             goto leave;
@@ -337,15 +345,15 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
 
     /* Step 3 */
     /* Is this necesssary? */
-    h = ngx_http_cross_origin_search_header(&r->headers_in.headers, 
-            &request_method_header);
+    h = ngx_http_cors_search_header(&r->headers_in.headers, 
+            &ngx_http_cors_request_method_header);
     if (h == NULL) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                 "http cross origin not include the request method header");
         goto leave;
     }
 
-    method = ngx_http_cross_origin_get_method(&h->value);
+    method = ngx_http_cors_get_method(&h->value);
     if (method == NGX_HTTP_UNKNOWN) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                 "http cross origin get unknown method");
@@ -355,8 +363,8 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     
     /* Step 4 */
     field_names = NULL;
-    headers = ngx_http_cross_origin_search_multi_request_header(r,
-            &request_headers_header);
+    headers = ngx_http_cors_search_multi_request_header(r,
+            &ngx_http_cors_request_headers_header);
     if (headers != NULL) {
         field_names = ngx_array_create(r->pool, 4, sizeof(ngx_str_t));
         if (field_names == NULL) {
@@ -365,7 +373,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
 
         h = headers->elts;
         for (i = 0; i < headers->nelts; i++) {
-            if (ngx_http_cross_origin_split_string(&h[i].value, COMMA, 
+            if (ngx_http_cors_split_string(&h[i].value, ',', 
                         field_names) == NULL) {
                 return NGX_ERROR;
             }
@@ -374,7 +382,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
 
     /* Step 5 */
     if (!colcf->method_unbounded) {
-        if (!ngx_http_cross_origin_search_list(colcf->method_list, method_name, 0)) {
+        if (!ngx_http_cors_search_list(colcf->method_list, method_name, 0)) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                     "http cross origin method not include in the list of method");
             goto leave;
@@ -388,7 +396,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
             fnames = field_names->elts;
 
             for (i = 0; i < field_names->nelts; i++) {
-                if (ngx_http_cross_origin_search_list(colcf->header_list, 
+                if (ngx_http_cors_search_list(colcf->header_list, 
                             &fnames[i], 1)) {
                     match++;
                 }
@@ -405,21 +413,21 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     /* Step 7 */
     if (colcf->support_credential) {
 
-        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                    &response_origin_header, origin_name)
+        if (ngx_http_cors_add_header(&r->headers_out.headers, 
+                    &ngx_http_cors_response_origin_header, origin_name)
                 == NGX_ERROR) {
             return NGX_ERROR;
         }
 
-        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                    &response_credential_header, &response_credential_true) 
+        if (ngx_http_cors_add_header(&r->headers_out.headers, 
+                    &ngx_http_cors_response_credential_header, &ngx_http_cors_response_credential_true) 
                 == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
     else {
-        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                    &response_origin_header, origin_name)
+        if (ngx_http_cors_add_header(&r->headers_out.headers, 
+                    &ngx_http_cors_response_origin_header, origin_name)
                 == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -435,27 +443,27 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
         last = ngx_snprintf(str_max_age.data, 64, "%T", colcf->max_age);
         str_max_age.len = last - str_max_age.data;
 
-        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                    &response_max_age_header, &str_max_age) == NGX_ERROR) {
+        if (ngx_http_cors_add_header(&r->headers_out.headers, 
+                    &ngx_http_cors_response_max_age_header, &str_max_age) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
 
     /* Step 9 */
-    if (!ngx_http_cross_origin_search_string(simple_methods, method_name, 0)) {
+    if (!ngx_http_cors_search_string(ngx_http_cors_simple_methods, method_name, 0)) {
         if (colcf->method_unbounded) {
-            if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                        &response_method_header, method_name) == NGX_ERROR) {
+            if (ngx_http_cors_add_header(&r->headers_out.headers, 
+                        &ngx_http_cors_response_method_header, method_name) == NGX_ERROR) {
                 return NGX_ERROR;
             }
         }
         else {
             /* XXX: Multi-filed-name in one or more headers? */
-            str_tmp = ngx_http_cross_origin_concatenate_list_value(r, 
+            str_tmp = ngx_http_cors_concatenate_list_value(r, 
                     colcf->method_list);
 
-            if (str_tmp && ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                        &response_method_header, str_tmp) == NGX_ERROR) {
+            if (str_tmp && ngx_http_cors_add_header(&r->headers_out.headers, 
+                        &ngx_http_cors_response_method_header, str_tmp) == NGX_ERROR) {
                 return NGX_ERROR;
             }
         }
@@ -466,7 +474,7 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
     if (field_names && field_names->nelts > 0) {
         fnames = field_names->elts;
         for (i = 0; i < field_names->nelts; i++) {
-            if (!ngx_http_cross_origin_search_string(simple_headers, &fnames[i], 1)) {
+            if (!ngx_http_cors_search_string(ngx_http_cors_simple_headers, &fnames[i], 1)) {
                 not_simple = 1;
                 break;
             }
@@ -478,19 +486,19 @@ ngx_http_cross_origin_rewrite_handler(ngx_http_request_t *r)
             if (headers) {
                 h = headers->elts;
                 for (i = 0; i < headers->nelts; i++) {
-                    if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                                &response_headers_header, &h[i].value) == NGX_ERROR) {
+                    if (ngx_http_cors_add_header(&r->headers_out.headers, 
+                                &ngx_http_cors_response_headers_header, &h[i].value) == NGX_ERROR) {
                         return NGX_ERROR;
                     }
                 }
             }
         }
         else {
-            str_tmp = ngx_http_cross_origin_concatenate_list_value(r, 
+            str_tmp = ngx_http_cors_concatenate_list_value(r, 
                     colcf->header_list);
 
-            if (str_tmp && ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                        &response_headers_header, str_tmp) == NGX_ERROR) {
+            if (str_tmp && ngx_http_cors_add_header(&r->headers_out.headers, 
+                        &ngx_http_cors_response_headers_header, str_tmp) == NGX_ERROR) {
                 return NGX_ERROR;
             }
         }
@@ -511,30 +519,30 @@ leave:
 
 /* For Simple Cross-Origin Request, Actual Request, and Redirects */
 static ngx_int_t
-ngx_http_cross_origin_filter(ngx_http_request_t *r)
+ngx_http_cors_filter(ngx_http_request_t *r)
 {
     ngx_str_t                         *n, *origin_name, *str_tmp;
     ngx_uint_t                         match, i;
     ngx_array_t                       *names;
     ngx_table_elt_t                   *h;
-    ngx_http_cross_origin_ctx_t       *ctx;
-    ngx_http_cross_origin_loc_conf_t  *colcf;
+    ngx_http_cors_ctx_t       *ctx;
+    ngx_http_cors_loc_conf_t  *colcf;
 
-    colcf = ngx_http_get_module_loc_conf(r, ngx_http_cross_origin_module);
+    colcf = ngx_http_get_module_loc_conf(r, ngx_http_cors_module);
 
     if (!colcf->enable) {
         goto next_filter;
     }
 
-    ctx = ngx_http_get_module_ctx(r, ngx_http_cross_origin_module);
+    ctx = ngx_http_get_module_ctx(r, ngx_http_cors_module);
     if (ctx) {
         if (ctx->preflight) {
             goto next_filter;
         }
     }
 
-    h = ngx_http_cross_origin_search_header(&r->headers_out.headers, 
-            &response_origin_header);
+    h = ngx_http_cors_search_header(&r->headers_out.headers, 
+            &ngx_http_cors_response_origin_header);
     if (h) {
         /* Already processed by upstream server */
         goto next_filter;
@@ -551,8 +559,8 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
             "http cross origin filter");
 
     /* Step 1 */
-    h = ngx_http_cross_origin_search_header(&r->headers_in.headers,
-            &request_origin_header);
+    h = ngx_http_cors_search_header(&r->headers_in.headers,
+            &ngx_http_cors_request_origin_header);
     if (h == NULL) {
         goto next_filter;
     }
@@ -563,7 +571,7 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
 
         match = 0;
 
-        if (ngx_strlchr(origin_name->data, origin_name->data + origin_name->len, SPACE)) {
+        if (ngx_strlchr(origin_name->data, origin_name->data + origin_name->len, ' ')) {
 
             names = ngx_array_create(r->pool, 4, sizeof(ngx_str_t));
             if (names == NULL) {
@@ -571,11 +579,11 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
             }
 
             /* Multiple origin names */
-            names = ngx_http_cross_origin_split_string(origin_name, SPACE, names);
+            names = ngx_http_cors_split_string(origin_name, ' ', names);
             if (names && names->nelts > 0) {
                 n = names->elts;
                 for (i = 0; i < names->nelts; i++) {
-                    if (ngx_http_cross_origin_search_list(colcf->origin_list, 
+                    if (ngx_http_cors_search_list(colcf->origin_list, 
                                 &n[i], 0)) {
                         match = 1;
                     }
@@ -584,7 +592,7 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
         }
         else {
             /* Single origin name */
-            if (ngx_http_cross_origin_search_list(colcf->origin_list, origin_name, 0)) {
+            if (ngx_http_cors_search_list(colcf->origin_list, origin_name, 0)) {
                 match = 1;
             }
         }
@@ -599,20 +607,20 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
     /* Step 3 */
     if (colcf->support_credential) {
 
-        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                    &response_origin_header, origin_name) == NGX_ERROR) {
+        if (ngx_http_cors_add_header(&r->headers_out.headers, 
+                    &ngx_http_cors_response_origin_header, origin_name) == NGX_ERROR) {
             return NGX_ERROR;
         }
 
-        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                    &response_credential_header, 
-                    &response_credential_true) == NGX_ERROR) {
+        if (ngx_http_cors_add_header(&r->headers_out.headers, 
+                    &ngx_http_cors_response_credential_header, 
+                    &ngx_http_cors_response_credential_true) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
     else {
-        if (ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                    &response_origin_header, origin_name) == NGX_ERROR) {
+        if (ngx_http_cors_add_header(&r->headers_out.headers, 
+                    &ngx_http_cors_response_origin_header, origin_name) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
@@ -621,11 +629,11 @@ ngx_http_cross_origin_filter(ngx_http_request_t *r)
     if (colcf->expose_header_list && colcf->expose_header_list->nelts) {
 
         /* XXX: Multi-filed-name in one or more headers? */
-        str_tmp = ngx_http_cross_origin_concatenate_list_value(r, 
+        str_tmp = ngx_http_cors_concatenate_list_value(r, 
                 colcf->expose_header_list);
 
-        if (str_tmp && ngx_http_cross_origin_add_header(&r->headers_out.headers, 
-                    &response_expose_headers_header, str_tmp) == NGX_ERROR) {
+        if (str_tmp && ngx_http_cors_add_header(&r->headers_out.headers, 
+                    &ngx_http_cors_response_expose_headers_header, str_tmp) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
@@ -639,7 +647,7 @@ next_filter:
 
 
 static ngx_table_elt_t *
-ngx_http_cross_origin_search_header(ngx_list_t *list, ngx_str_t *name)
+ngx_http_cors_search_header(ngx_list_t *list, ngx_str_t *name)
 {
     ngx_uint_t                   i;
     ngx_table_elt_t             *h;
@@ -672,7 +680,7 @@ ngx_http_cross_origin_search_header(ngx_list_t *list, ngx_str_t *name)
 
 
 static ngx_array_t *
-ngx_http_cross_origin_search_multi_request_header(ngx_http_request_t *r, 
+ngx_http_cors_search_multi_request_header(ngx_http_request_t *r, 
         ngx_str_t *name)
 {
     ngx_uint_t                   i;
@@ -722,11 +730,11 @@ ngx_http_cross_origin_search_multi_request_header(ngx_http_request_t *r,
 
 
 static ngx_int_t 
-ngx_http_cross_origin_search_list(ngx_array_t *arr, ngx_str_t *name, 
+ngx_http_cors_search_list(ngx_array_t *arr, ngx_str_t *name, 
         ngx_flag_t case_insensitive)
 {
     ngx_uint_t                   i, hash;
-    ngx_http_cross_origin_val_t *elt;
+    ngx_http_cors_val_t *elt;
 
     if (arr == NULL || name == NULL || name->len == 0) {
         return 0;
@@ -765,12 +773,12 @@ ngx_http_cross_origin_search_list(ngx_array_t *arr, ngx_str_t *name,
 
 
 static ngx_uint_t
-ngx_http_cross_origin_get_method(ngx_str_t *method)
+ngx_http_cors_get_method(ngx_str_t *method)
 {
     ngx_uint_t                           i;
-    ngx_http_corss_origin_method_name_t *m;
+    ngx_http_cors_method_name_t *m;
 
-    m = ngx_methods_names;
+    m = ngx_http_cors_methods_names;
     
     for (i = 0; /* void */; i++) {
 
@@ -789,7 +797,7 @@ ngx_http_cross_origin_get_method(ngx_str_t *method)
 
 
 static ngx_int_t
-ngx_http_cross_origin_add_header(ngx_list_t *list, ngx_str_t *key,
+ngx_http_cors_add_header(ngx_list_t *list, ngx_str_t *key,
     ngx_str_t *value)
 {
     ngx_table_elt_t  *h;
@@ -810,7 +818,7 @@ ngx_http_cross_origin_add_header(ngx_list_t *list, ngx_str_t *key,
 
 
 static ngx_int_t 
-ngx_http_cross_origin_search_string(ngx_str_t *string_array, ngx_str_t *name, 
+ngx_http_cors_search_string(ngx_str_t *string_array, ngx_str_t *name, 
         ngx_flag_t case_insensitive)
 {
     ngx_str_t *s;
@@ -842,14 +850,14 @@ ngx_http_cross_origin_search_string(ngx_str_t *string_array, ngx_str_t *name,
 
 
 static ngx_str_t *
-ngx_http_cross_origin_concatenate_list_value(ngx_http_request_t *r, 
+ngx_http_cors_concatenate_list_value(ngx_http_request_t *r, 
         ngx_array_t *arr)
 {
     size_t                       len;
     u_char                      *last, *end;
     ngx_str_t                   *s;
     ngx_uint_t                   i;
-    ngx_http_cross_origin_val_t *elt;
+    ngx_http_cors_val_t *elt;
 
     if (arr == NULL) {
         return NULL;
@@ -902,7 +910,7 @@ ngx_http_cross_origin_concatenate_list_value(ngx_http_request_t *r,
 
 
 static ngx_array_t *
-ngx_http_cross_origin_split_string(ngx_str_t *str, 
+ngx_http_cors_split_string(ngx_str_t *str, 
         u_char separator, ngx_array_t *arr)
 {
     u_char                      *pre, *p, *last;
@@ -931,7 +939,7 @@ ngx_http_cross_origin_split_string(ngx_str_t *str,
 
         p++;
 
-        while ((p < last) && (*p == SPACE)) {
+        while ((p < last) && (*p == ' ')) {
             p++;
         }
 
@@ -943,7 +951,7 @@ ngx_http_cross_origin_split_string(ngx_str_t *str,
 
 
 static ngx_int_t
-ngx_http_cross_origin_init(ngx_conf_t *cf)
+ngx_http_cors_init(ngx_conf_t *cf)
 {
     ngx_http_handler_pt             *h;
     ngx_http_core_main_conf_t       *cmcf;
@@ -955,10 +963,10 @@ ngx_http_cross_origin_init(ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
-    *h = ngx_http_cross_origin_rewrite_handler;
+    *h = ngx_http_cors_rewrite_handler;
 
     ngx_http_next_header_filter = ngx_http_top_header_filter;
-    ngx_http_top_header_filter = ngx_http_cross_origin_filter;
+    ngx_http_top_header_filter = ngx_http_cors_filter;
 
     return NGX_OK;
 }
@@ -967,17 +975,17 @@ ngx_http_cross_origin_init(ngx_conf_t *cf)
 static char *
 ngx_http_cors_origin_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_cross_origin_loc_conf_t  *colcf = conf;
+    ngx_http_cors_loc_conf_t  *colcf = conf;
 
     ngx_str_t                         *value;
     ngx_uint_t                         i;
-    ngx_http_cross_origin_val_t       *cov;
+    ngx_http_cors_val_t       *cov;
 
     value = cf->args->elts;
 
     if (colcf->origin_list == NULL) {
         colcf->origin_list = ngx_array_create(cf->pool, 4,
-                                        sizeof(ngx_http_cross_origin_val_t));
+                                        sizeof(ngx_http_cors_val_t));
         if (colcf->origin_list == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -1006,17 +1014,17 @@ ngx_http_cors_origin_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_cors_method_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_cross_origin_loc_conf_t  *colcf = conf;
+    ngx_http_cors_loc_conf_t  *colcf = conf;
 
     ngx_str_t                         *value;
     ngx_uint_t                         i, method;
-    ngx_http_cross_origin_val_t       *cov;
+    ngx_http_cors_val_t       *cov;
 
     value = cf->args->elts;
 
     if (colcf->method_list == NULL) {
         colcf->method_list = ngx_array_create(cf->pool, 4,
-                                        sizeof(ngx_http_cross_origin_val_t));
+                                        sizeof(ngx_http_cors_val_t));
         if (colcf->method_list == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -1034,7 +1042,7 @@ ngx_http_cors_method_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        method = ngx_http_cross_origin_get_method(&value[i]);
+        method = ngx_http_cors_get_method(&value[i]);
         if (method == NGX_HTTP_UNKNOWN) {
             return NGX_CONF_ERROR;
         }
@@ -1052,17 +1060,17 @@ ngx_http_cors_method_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_cors_header_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_cross_origin_loc_conf_t  *colcf = conf;
+    ngx_http_cors_loc_conf_t  *colcf = conf;
 
     ngx_str_t                         *value;
     ngx_uint_t                         i;
-    ngx_http_cross_origin_val_t       *cov;
+    ngx_http_cors_val_t       *cov;
 
     value = cf->args->elts;
 
     if (colcf->header_list == NULL) {
         colcf->header_list = ngx_array_create(cf->pool, 4,
-                                        sizeof(ngx_http_cross_origin_val_t));
+                                        sizeof(ngx_http_cors_val_t));
         if (colcf->header_list == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -1091,7 +1099,7 @@ ngx_http_cors_header_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_cors_safe_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_cross_origin_loc_conf_t   *colcf = conf;
+    ngx_http_cors_loc_conf_t   *colcf = conf;
 
     ngx_str_t                          *value;
     ngx_uint_t                          i, method;
@@ -1100,7 +1108,7 @@ ngx_http_cors_safe_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
 
-        method = ngx_http_cross_origin_get_method(&value[i]);
+        method = ngx_http_cors_get_method(&value[i]);
         if (method == NGX_HTTP_UNKNOWN) {
             return NGX_CONF_ERROR;
         }
@@ -1115,17 +1123,17 @@ ngx_http_cors_safe_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_cors_expose_header_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_http_cross_origin_loc_conf_t  *colcf = conf;
+    ngx_http_cors_loc_conf_t  *colcf = conf;
 
     ngx_str_t                         *value;
     ngx_uint_t                         i;
-    ngx_http_cross_origin_val_t       *cov;
+    ngx_http_cors_val_t       *cov;
 
     value = cf->args->elts;
 
     if (colcf->expose_header_list == NULL) {
         colcf->expose_header_list = ngx_array_create(cf->pool, 4,
-                                        sizeof(ngx_http_cross_origin_val_t));
+                                        sizeof(ngx_http_cors_val_t));
         if (colcf->expose_header_list == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -1133,7 +1141,7 @@ ngx_http_cors_expose_header_list(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
 
-        if (ngx_http_cross_origin_search_string(simple_response_headers, 
+        if (ngx_http_cors_search_string(ngx_http_cors_simple_response_headers, 
                     &value[i], 1)) {
             continue;
         }
@@ -1155,7 +1163,7 @@ static char *
 ngx_http_cors_preflight_response(ngx_conf_t *cf, ngx_command_t *cmd, 
         void *conf)
 {
-    ngx_http_cross_origin_loc_conf_t  *colcf = conf;
+    ngx_http_cors_loc_conf_t  *colcf = conf;
 
     ngx_str_t                         *value;
     ngx_http_compile_complex_value_t   ccv;
@@ -1181,11 +1189,11 @@ ngx_http_cors_preflight_response(ngx_conf_t *cf, ngx_command_t *cmd,
 
 
 static void *
-ngx_http_cross_origin_create_conf(ngx_conf_t *cf)
+ngx_http_cors_create_conf(ngx_conf_t *cf)
 {
-    ngx_http_cross_origin_loc_conf_t  *conf;
+    ngx_http_cors_loc_conf_t  *conf;
 
-    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_cross_origin_loc_conf_t));
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_cors_loc_conf_t));
     if (conf == NULL) {
         return NULL;
     }
@@ -1215,10 +1223,10 @@ ngx_http_cross_origin_create_conf(ngx_conf_t *cf)
 
 
 static char *
-ngx_http_cross_origin_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 {
-    ngx_http_cross_origin_loc_conf_t *prev = parent;
-    ngx_http_cross_origin_loc_conf_t *conf = child;
+    ngx_http_cors_loc_conf_t *prev = parent;
+    ngx_http_cors_loc_conf_t *conf = child;
 
     if (conf->origin_list == NULL) {
         conf->origin_list = prev->origin_list;
@@ -1254,7 +1262,7 @@ ngx_http_cross_origin_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->support_credential, prev->support_credential, 0);
     ngx_conf_merge_sec_value(conf->max_age, prev->max_age, 0);
     ngx_conf_merge_str_value(conf->preflight_response_type, 
-            prev->preflight_response_type, DEFAULT_RESPONSE_CONTENT_TYPE);
+            prev->preflight_response_type, NGX_HTTP_CORS_DEFAULT_RESPONSE_CONTENT_TYPE);
 
     return NGX_CONF_OK;
 }
