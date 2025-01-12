@@ -1233,6 +1233,7 @@ ngx_http_cors_create_conf(ngx_conf_t *cf)
     conf->header_unbounded = NGX_CONF_UNSET;
     conf->allow_credentials = NGX_CONF_UNSET;
     conf->max_age = NGX_CONF_UNSET;
+    conf->preflight_status = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
