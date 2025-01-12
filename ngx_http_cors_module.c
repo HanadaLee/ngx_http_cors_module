@@ -82,14 +82,6 @@ static char *ngx_http_cors_expose_headers(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 
 
-
-static ngx_conf_enum_t  ngx_http_cors_preflight_status[] = {
-    { ngx_string("200"), NGX_HTTP_OK },
-    { ngx_string("204"), NGX_HTTP_NO_CONTENT },
-    { ngx_null_string, 0 }
-};
-
-
 static ngx_command_t  ngx_http_cors_commands[] = {
 
     { ngx_string("cors"),
@@ -143,10 +135,10 @@ static ngx_command_t  ngx_http_cors_commands[] = {
 
     { ngx_string("cors_preflight_status"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_enum_slot,
+      ngx_conf_set_num_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_cors_loc_conf_t, preflight_status),
-      &ngx_http_cors_preflight_status },
+      NULL },
 
       ngx_null_command
 };
@@ -1013,7 +1005,7 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (ngx_strcmp(value[i].data, "*") == 0
-            || ngx_strcmp(value[i].data, "**"))
+            || ngx_strcmp(value[i].data, "**") == 0)
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"%V\" cannot be used with other origins",
@@ -1084,7 +1076,7 @@ ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (ngx_strcmp(value[i].data, "*") == 0
-            || ngx_strcmp(value[i].data, "**"))
+            || ngx_strcmp(value[i].data, "**") == 0)
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"%V\" cannot be used with other methods",
@@ -1153,7 +1145,7 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (ngx_strcmp(value[i].data, "*") == 0
-            || ngx_strcmp(value[i].data, "**"))
+            || ngx_strcmp(value[i].data, "**") == 0)
         {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"%V\" cannot be used with other headers",
@@ -1307,6 +1299,15 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                                "\"cors_allow_credential\" is enabled");
             return NGX_CONF_ERROR;
         }
+    }
+
+    if (preflight_status != NGX_HTTP_OK
+        && preflight_status != NGX_HTTP_NO_CONTENT)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "only 200 and 206 can be used for "
+                           "preflight responses");
+        return NGX_CONF_ERROR;
     }
 
     return NGX_CONF_OK;
