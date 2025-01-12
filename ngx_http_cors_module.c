@@ -1301,8 +1301,8 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         }
     }
 
-    if (preflight_status != NGX_HTTP_OK
-        && preflight_status != NGX_HTTP_NO_CONTENT)
+    if (conf->preflight_status != NGX_HTTP_OK
+        && conf->preflight_status != NGX_HTTP_NO_CONTENT)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "only 200 and 206 can be used for "
