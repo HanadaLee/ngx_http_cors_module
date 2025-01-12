@@ -357,7 +357,6 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                 "http cors origin header not found");
             goto leave;
-
         }
 
         allow_origin = &h->value;
