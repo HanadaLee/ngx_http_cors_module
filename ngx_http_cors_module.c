@@ -295,7 +295,7 @@ ngx_http_cors_rewrite_handler(ngx_http_request_t *r)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http cors rewrite handler \"%V\"", &r->uri);
 
-    r->headers_out.status = colcf->preflight_status;
+    rc = colcf->preflight_status;
     r->headers_out.content_type.len = 0;
     r->header_only = 1;
 
