@@ -356,7 +356,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
         if (h == NULL) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                 "http cors origin header not found");
-            goto next_filter;
+            goto leave;
 
         }
 
@@ -385,7 +385,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
             "http cors origin is not included in the list of allow origins");
-        goto next_filter;
+        goto leave;
     }
 
     /* Step 2 */
@@ -406,14 +406,14 @@ step_2:
         if (h == NULL) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                 "http cors request method header not found");
-            goto next_filter;
+            goto leave;
         }
 
         method = ngx_http_cors_get_method(&h->value);
         if (method == NGX_HTTP_UNKNOWN) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                     "http cors get unknown method");
-            goto next_filter;
+            goto leave;
         }
 
         allow_methods = &h->value;
@@ -423,7 +423,7 @@ step_2:
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                 "http cors request method \"%V\" is not included in "
                 "the list of allow methods", allow_methods);
-            goto next_filter;
+            goto leave;
         }
 
         allow_methods = ngx_http_cors_concatenate_list_value(r,
@@ -576,7 +576,9 @@ step_2:
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
             "http cors header filter done");
 
-next_filter:
+    return ngx_http_next_header_filter(r);
+
+leave:
 
     if (preflight) {
         r->headers_out.status = NGX_HTTP_FORBIDDEN;
