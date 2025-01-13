@@ -292,14 +292,12 @@ ngx_http_cors_rewrite_handler(ngx_http_request_t *r)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http cors rewrite handler \"%V\"", &r->uri);
 
+    r->headers_out.status = colcf->preflight_status;
+    r->headers_out.content_length_n = 0;
     r->header_only = 1;
-    ngx_str_null(&r->headers_out.content_type);
-    r->headers_out.last_modified_time = -1;
-    r->headers_out.last_modified = NULL;
-    r->headers_out.content_length = NULL;
-    r->headers_out.content_length_n = -1;
 
-    return colcf->preflight_status;
+    ngx_http_finalize_request(r, ngx_http_send_header(r));
+    return NGX_OK;
 }
 
 
