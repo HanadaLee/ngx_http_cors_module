@@ -600,9 +600,15 @@ ngx_http_cors_search_list(ngx_array_t *arr, ngx_str_t *name,
     ngx_uint_t                   i, hash;
     ngx_http_cors_val_t         *elt;
 
-    if (arr == NULL || name == NULL || name->len == 0) {
+    if (arr == NULL) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                         "ngx_http_cors_search_list: invalid parameter (array or name is NULL/empty)");
+                         "ngx_http_cors_search_list: invalid parameter (array is NULL)");
+        return 0;
+    }
+
+    if (name == NULL || name->len == 0) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                         "ngx_http_cors_search_list: invalid parameter (name is NULL/empty)");
         return 0;
     }
 
