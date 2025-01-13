@@ -1256,11 +1256,15 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_cors_loc_conf_t *conf = child;
 
     if (conf->allow_origins == NULL
-        && conf->allow_origins_regex == NULL
+#if (NGX_PCRE)
+        && conf->allow_origins_regex == NGX_CONF_UNSET_PTR
+#endif
         && conf->origin_unbounded == NGX_CONF_UNSET)
     {
         conf->allow_origins = prev->allow_origins;
-        conf->allow_origins_regex = prev->allow_origins_regex;
+#if (NGX_PCRE)
+        ngx_conf_merge_ptr_value(conf->allow_origins_regex, prev->allow_origins_regex, NULL);
+#endif
         ngx_conf_merge_value(conf->origin_unbounded, prev->origin_unbounded,
             1);
     }
