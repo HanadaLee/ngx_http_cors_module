@@ -933,38 +933,26 @@ ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
     ngx_regex_compile_t   rc;
     u_char                errstr[NGX_MAX_CONF_ERRSTR];
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0,
-                   "ngx_http_add_allow_origin_regex: processing regex string \"%V\"", name);
-
     if (name->len == 1) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "empty regex in \"%V\"", name);
+            "empty regex in \"%V\"", name);
         return NGX_ERROR;
     }
 
     if (origins == NGX_CONF_UNSET_PTR) {
         origins = ngx_array_create(cf->pool, 2, sizeof(ngx_regex_elt_t));
         if (origins == NULL) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "ngx_http_add_allow_origin_regex: failed to create array");
             return NGX_ERROR;
         }
-        ngx_log_debug0(NGX_LOG_DEBUG_CORE, cf->log, 0,
-                       "ngx_http_add_allow_origin_regex: created new regex array");
     }
 
     re = ngx_array_push(origins);
     if (re == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "ngx_http_add_allow_origin_regex: failed to push new element into array");
         return NGX_ERROR;
     }
 
     name->len--;
     name->data++;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0,
-                   "ngx_http_add_allow_origin_regex: adjusted regex string to \"%V\"", name);
 
     ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
 
@@ -975,19 +963,12 @@ ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
     rc.err.data = errstr;
 
     if (ngx_regex_compile(&rc) != NGX_OK) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "ngx_http_add_allow_origin_regex: regex compile error: %V", &rc.err);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V", &rc.err);
         return NGX_ERROR;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0,
-                   "ngx_http_add_allow_origin_regex: regex compiled successfully");
-
     re->regex = rc.regex;
     re->name = name->data;
-
-    ngx_log_debug2(NGX_LOG_DEBUG_CORE, cf->log, 0,
-                   "ngx_http_add_allow_origin_regex: stored regex %p, name: \"%s\"",
-                   re->regex, re->name);
 
     return NGX_OK;
 }
