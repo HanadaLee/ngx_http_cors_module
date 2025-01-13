@@ -33,12 +33,11 @@ __DATA__
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list unbounded;
-cors_method_list unbounded;
-cors_header_list unbounded;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins **;
+cors_allow_methods **;
+cors_allow_headers **;
+cors_expose_headers AAAA Expires BBB CCC;
+cors_allow_credentials on;
 
 --- config
     location / {
@@ -56,12 +55,11 @@ Access-Control-Allow-Origin: http://example.org
 --- http_config
 cors off;
 cors_max_age     3600;
-cors_origin_list unbounded;
-cors_method_list unbounded;
-cors_header_list unbounded;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins **;
+cors_allow_methods **;
+cors_allow_headers **;
+cors_expose_headers AAAA Expires BBB CCC;
+cors_allow_credentials on;
 
 --- config
     location / {
@@ -75,16 +73,15 @@ GET /
 --- response_headers_absent
 Access-Control-Allow-Origin: http://example.org
 
-=== TEST 3: test the cors_origin_list succ
+=== TEST 3: test the cors_allow_origins succ
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list http://www.foo.com http://example.org http://bar.net;
-cors_method_list unbounded;
-cors_header_list unbounded;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins http://www.foo.com http://example.org http://bar.net;
+cors_allow_methods **;
+cors_allow_headers **;
+cors_expose_headers AAAA Expires BBB CCC;
+cors_allow_credentials on;
 
 --- config
     location / {
@@ -98,16 +95,15 @@ GET /
 --- response_headers
 Access-Control-Allow-Origin: http://example.org
 
-=== TEST 4: test the cors_origin_list fail
+=== TEST 4: test the cors_allow_origins fail
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list http://www.foo.com http://example1.org http://bar.net;
-cors_method_list unbounded;
-cors_header_list unbounded;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins http://www.foo.com http://example1.org http://bar.net;
+cors_allow_methods **;
+cors_allow_headers **;
+cors_expose_headers AAAA Expires BBB CCC;
+cors_allow_credentials on;
 
 --- config
     location / {
@@ -121,16 +117,15 @@ GET /
 --- response_headers_absent
 Access-Control-Allow-Origin: http://example.org
 
-=== TEST 5: test with the cors_expose_header_list
+=== TEST 5: test with the cors_expose_headers
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list http://www.foo.com http://example.org http://bar.net;
-cors_method_list GET PUT POST;
-cors_header_list Accept;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins http://www.foo.com http://example.org http://bar.net;
+cors_allow_methods GET PUT POST;
+cors_allow_headers Accept;
+cors_expose_headers AAAA Expires BBB CCC;
+cors_allow_credentials on;
 
 --- config
     location / {
@@ -144,15 +139,14 @@ GET /
 --- response_headers
 Access-Control-Expose-Headers: AAAA, BBB, CCC
 
-=== TEST 6: test without the cors_expose_header_list
+=== TEST 6: test without the cors_expose_headers
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list http://www.foo.com http://example.org http://bar.net;
-cors_method_list GET PUT POST;
-cors_header_list Accept;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins http://www.foo.com http://example.org http://bar.net;
+cors_allow_methods GET PUT POST;
+cors_allow_headers Accept;
+cors_allow_credentials on;
 
 --- config
     location / {
@@ -171,12 +165,11 @@ Access-Control-Expose-Headers: AAAA, BBB, CCC
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list http://www.foo.com http://example.org http://bar.net;
-cors_method_list GET PUT POST;
-cors_header_list Accept Bccept;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins http://www.foo.com http://example.org http://bar.net;
+cors_allow_methods GET PUT POST;
+cors_allow_headers Accept Bccept;
+cors_expose_headers AAAA Expires BBB CCC;
+cors_allow_credentials on;
 
 --- config
     location / {
@@ -196,11 +189,10 @@ Access-Control-Allow-Credentials: true
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list http://www.foo.com http://example.org http://bar.net;
-cors_method_list GET PUT POST;
-cors_header_list Accept Bccept;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins http://www.foo.com http://example.org http://bar.net;
+cors_allow_methods GET PUT POST;
+cors_allow_headers Accept Bccept;
+cors_expose_headers AAAA Expires BBB CCC;
 
 --- config
     location / {
@@ -220,12 +212,11 @@ Access-Control-Allow-Credentials: true
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list http://www.foo.com http://example.org http://bar.net;
-cors_method_list GET PUT;
-cors_header_list Accept Bccept;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins http://www.foo.com http://example.org http://bar.net;
+cors_allow_methods GET PUT;
+cors_allow_headers Accept Bccept;
+cors_expose_headers AAAA Expires BBB CCC;
+cors_allow_credentials on;
 
 --- config
     location / {
@@ -245,12 +236,11 @@ Access-Control-Allow-Credentials: true
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list http://www.foo.com http://example.org http://bar.net;
-cors_method_list GET PUT POST;
-cors_header_list Accept Bccept;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins http://www.foo.com http://example.org http://bar.net;
+cors_allow_methods GET PUT POST;
+cors_allow_headers Accept Bccept;
+cors_expose_headers AAAA Expires BBB CCC;
+cors_allow_credentials on;
 
 --- config
     location / {
@@ -270,12 +260,11 @@ Access-Control-Allow-Credentials: true
 --- http_config
 cors on;
 cors_max_age     3600;
-cors_origin_list http://www.foo.com http://example.org http://bar.net;
-cors_method_list unbounded;
-cors_header_list Accept Bccept;
-cors_expose_header_list AAAA Expires BBB CCC;
-cors_support_credential on;
-cors_preflight_response "Foo Bar!";
+cors_allow_origins http://www.foo.com http://example.org http://bar.net;
+cors_allow_methods **;
+cors_allow_headers Accept Bccept;
+cors_expose_headers AAAA Expires BBB CCC;
+cors_allow_credentials on;
 
 --- config
     location / {

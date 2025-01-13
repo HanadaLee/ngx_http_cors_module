@@ -1,5 +1,5 @@
 Name
-    nginx_cross_origin_module - support cross origin resource sharing
+    ngx_http_cors_module - support cross origin resource sharing
     protocol in Nginx
 
 Status
@@ -16,9 +16,9 @@ Synopsis
 
         cors on;
         cors_max_age     3600;
-        cors_origin_list unbounded;
-        cors_method_list GET HEAD PUT POST;
-        cors_header_list unbounded;
+        cors_allow_origins **;
+        cors_allow_methods GET HEAD PUT POST;
+        cors_allow_headers **;
 
         server {
             listen       80;
@@ -34,7 +34,7 @@ Synopsis
 Description
     This module can process the cross-origin resource sharing Javascript
     request with this protocol (<http://www.w3.org/TR/cors/>). This module
-    follows the protocol version of 20100727.
+    follows the protocol version of 20250113.
 
 Directives
   cors
@@ -46,8 +46,16 @@ Directives
 
     Enable this module
 
-  cors_origin_list
-    syntax: *cors_origin_list unbounded|origin_list;*
+    syntax: *cors_bypass string ...;*
+
+    default: *-*
+
+    context: *http, server, location*
+
+    Defines conditions under which the response will set the cors headers.
+
+  cors_allow_origins
+    syntax: *cors_allow_origins \* | \*\* | origins ...;*
 
     default: *none*
 
@@ -57,11 +65,11 @@ Directives
     that are allowed. *unbounded* means any cross origin is allowed. The
     format is like this:
 
-    cors_origin_list http://www.foo.com http://new.bar.net
+    cors_allow_origins http://www.foo.com http://new.bar.net
     http://example.org;
 
-  cors_method_list
-    syntax: *cors_method_list unbounded|method_list;*
+  cors_allow_methods
+    syntax: *cors_allow_methods \* | \*\* | methods ...;*
 
     default: *none*
 
@@ -71,10 +79,10 @@ Directives
     that are supported by the resource. *unbounded* means any cross origin
     request method is allowed. The format is like this:
 
-    cors_method_list GET POST PUT;
+    cors_allow_methods GET POST PUT;
 
-  cors_header_list
-    syntax: *cors_header_list unbounded|header_list;*
+  cors_allow_headers
+    syntax: *cors_allow_headers \* | \*\* | headers ...;*
 
     default: *none*
 
@@ -85,7 +93,7 @@ Directives
     request header is allowed.
 
   cors_expose_header_list
-    syntax: *cors_expose_header_list header_list;*
+    syntax: *cors_expose_headers headers;*
 
     default: *none*
 
@@ -104,53 +112,43 @@ Directives
     You can specify the amount of seconds the user agent is allowed to cache
     the result of the request.
 
-  cors_support_credential
-    syntax: *cors_support_credential on|off;*
+  cors_allow_credentials
+    syntax: *cors_allow_credentials on|off;*
 
-    default: *cors_support_credential off;*
+    default: *cors_allow_credentials off;*
 
     context: *http, server, location*
 
     You can specify if the resource supports credentials.
 
-  cors_preflight_response
-    syntax: *cors_preflight_response response_body;*
+  cors_preflight_status
+    syntax: *cors_preflight_status 200 | 204;*
 
-    default: *none*
-
-    context: *http, server, location*
-
-    You can specify the content of preflight response body. It supports
-    variable in the string.
-
-  cors_preflight_response_type
-    syntax: *cors_preflight_response_type mime_type;*
-
-    default: *cors_preflight_response_type text/plain;*
+    default: *cors_preflight_status 200;*
 
     context: *http, server, location*
 
-    You can specify the content type of preflight response body.
+    You can specify the status code of preflight response. 
 
 Installation
     Download the latest version of the release tarball of this module from
-    github (<http://github.com/yaoweibin/nginx_cross_origin_module>)
+    github (<http://github.com/HanadaLee/ngx_http_cors_module>)
 
     Grab the nginx source code from nginx.org (<http://nginx.org/>), for
-    example, the version 1.0.8 (see nginx compatibility), and then build the
+    example, the version 1.27.1 (see nginx compatibility), and then build the
     source with this module:
 
-        $ wget 'http://nginx.org/download/nginx-1.0.8.tar.gz'
-        $ tar -xzvf nginx-1.0.8.tar.gz
-        $ cd nginx-1.0.8/
+        $ wget 'http://nginx.org/download/nginx-1.27.1.tar.gz'
+        $ tar -xzvf nginx-1.27.1.tar.gz
+        $ cd nginx-1.27.1/
 
-        $ ./configure --add-module=/path/to/nginx_cross_origin_module
+        $ ./configure --add-module=/path/to/ngx_http_cors_module
 
         $ make
         $ make install
 
 Compatibility
-    My test bed 1.0.8.
+    My test bed 1.27.1.
 
 TODO
 Known Issues
@@ -159,9 +157,13 @@ Known Issues
 Changelogs
   v0.1
     first release
+  
+  v1.0
+    refactor
 
 Authors
     Weibin Yao(姚伟斌) *yaoweibin AT gmail DOT com*
+    Hanada im@hanada.info
 
 License
     This README template is from agentzh (<http://github.com/agentzh>).

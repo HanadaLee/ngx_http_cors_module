@@ -37,14 +37,14 @@ typedef struct {
     ngx_array_t               *allow_methods;
     ngx_array_t               *allow_headers;
     ngx_array_t               *expose_headers;
+    ngx_array_t               *bypass;
     ngx_flag_t                 enable;
+    ngx_flag_t                 allow_credentials;
     ngx_int_t                  allow_origins_mode;
     ngx_int_t                  allow_methods_mode;
     ngx_int_t                  allow_headers_mode;
-    ngx_flag_t                 allow_credentials;
-    time_t                     max_age;
-
     ngx_uint_t                 preflight_status;
+    time_t                     max_age;
 } ngx_http_cors_loc_conf_t;
 
 
@@ -96,6 +96,14 @@ static ngx_command_t  ngx_http_cors_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_cors_loc_conf_t, enable),
       NULL },
+
+    { ngx_string("cors_bypass"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+      ngx_http_set_predicate_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_cors_loc_conf_t, bypass),
+      NULL },
+
 
     { ngx_string("cors_allow_origins"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
@@ -289,6 +297,18 @@ ngx_http_cors_rewrite_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
+    switch (ngx_http_test_predicates(r, colcf->bypass)) {
+
+    case NGX_ERROR:
+        return NGX_ERROR;
+
+    case NGX_DECLINED:
+        return NGX_DECLINED;
+
+    default: /* NGX_OK */
+        break;
+    }
+
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http cors rewrite handler \"%V\"", &r->uri);
 
@@ -324,6 +344,18 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
 
     if (!colcf->enable) {
         return ngx_http_next_header_filter(r);
+    }
+
+    switch (ngx_http_test_predicates(r, colcf->bypass)) {
+
+    case NGX_ERROR:
+        return NGX_ERROR;
+
+    case NGX_DECLINED:
+        return ngx_http_next_header_filter(r);
+
+    default: /* NGX_OK */
+        break;
     }
 
     if (r->method == NGX_HTTP_OPTIONS) {
@@ -394,7 +426,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
     /* Step 2 */
 step_2:
     if (colcf->allow_methods_mode == 2) {
-        allow_methods = &ngx_http_cors_response_methods_unbounded;
+        allow_methods = &ngx_http_cors_response_methods_**;
 
     } else if (colcf->allow_methods_mode == 1) {
         allow_methods = &ngx_http_cors_response_value_wildcard;
@@ -1259,6 +1291,7 @@ ngx_http_cors_create_conf(ngx_conf_t *cf)
     conf->allow_methods_mode = NGX_CONF_UNSET;
     conf->allow_headers_mode = NGX_CONF_UNSET;
     conf->allow_credentials = NGX_CONF_UNSET;
+    conf->bypass = NGX_CONF_UNSET_PTR;
     conf->max_age = NGX_CONF_UNSET;
     conf->preflight_status = NGX_CONF_UNSET_UINT;
 
@@ -1304,6 +1337,7 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_ptr_value(conf->bypass, prev->bypass, NULL);
     ngx_conf_merge_value(conf->allow_credentials, prev->allow_credentials, 0);
     ngx_conf_merge_sec_value(conf->max_age, prev->max_age, 0);
     ngx_conf_merge_uint_value(conf->preflight_status, prev->preflight_status,
