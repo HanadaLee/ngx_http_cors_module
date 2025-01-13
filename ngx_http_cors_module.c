@@ -362,7 +362,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
         allow_origin = &h->value;
 
         if (ngx_http_cors_search_list(colcf->allow_origins, allow_origin, 1)) {
-            goto step2;
+            goto step_2;
         }
 
 #if (NGX_PCRE)
@@ -388,7 +388,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
     }
 
     /* Step 2 */
-step2:
+step_2:
     if (colcf->method_unbounded == 2) {
         allow_methods = &ngx_http_cors_response_methods_unbounded;
 
