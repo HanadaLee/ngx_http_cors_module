@@ -601,19 +601,33 @@ ngx_http_cors_search_list(ngx_array_t *arr, ngx_str_t *name,
     ngx_http_cors_val_t         *elt;
 
     if (arr == NULL || name == NULL || name->len == 0) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                         "ngx_http_cors_search_list: invalid parameter (array or name is NULL/empty)");
         return 0;
     }
 
     if (case_insensitive) {
         hash = ngx_hash_key_lc(name->data, name->len);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                       "ngx_http_cors_search_list: case_insensitive, computed hash: %ui", hash);
     }
     else {
         hash = ngx_hash_key(name->data, name->len);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                       "ngx_http_cors_search_list: case sensitive, computed hash: %ui", hash);
     }
 
     elt = arr->elts;
 
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                   "ngx_http_cors_search_list: iterating array, total elements: %ui, target name: \"%V\"",
+                   arr->nelts, name);
+
     for (i = 0; i < arr->nelts; i++) {
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                       "ngx_http_cors_search_list: comparing element %ui, element hash: %ui",
+                       i, elt[i].hash);
 
         if (elt[i].hash != hash) {
             continue;
@@ -622,16 +636,22 @@ ngx_http_cors_search_list(ngx_array_t *arr, ngx_str_t *name,
         if (!case_insensitive && elt[i].value.len == name->len
                 && ngx_strncmp(elt[i].value.data, name->data, name->len) == 0)
         {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                           "ngx_http_cors_search_list: match found at element %ui (case sensitive)", i);
             return 1;
         }
 
         if (case_insensitive && elt[i].value.len == name->len
                 && ngx_strncasecmp(elt[i].value.data, name->data, name->len) == 0)
         {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                           "ngx_http_cors_search_list: match found at element %ui (case insensitive)", i);
             return 1;
         }
     }
 
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
+                   "ngx_http_cors_search_list: no match found");
     return 0;
 }
 
@@ -913,26 +933,38 @@ ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
     ngx_regex_compile_t   rc;
     u_char                errstr[NGX_MAX_CONF_ERRSTR];
 
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0,
+                   "ngx_http_add_allow_origin_regex: processing regex string \"%V\"", name);
+
     if (name->len == 1) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-            "empty regex in \"%V\"", name);
+                           "empty regex in \"%V\"", name);
         return NGX_ERROR;
     }
 
     if (origins == NGX_CONF_UNSET_PTR) {
         origins = ngx_array_create(cf->pool, 2, sizeof(ngx_regex_elt_t));
         if (origins == NULL) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "ngx_http_add_allow_origin_regex: failed to create array");
             return NGX_ERROR;
         }
+        ngx_log_debug0(NGX_LOG_DEBUG_CORE, cf->log, 0,
+                       "ngx_http_add_allow_origin_regex: created new regex array");
     }
 
     re = ngx_array_push(origins);
     if (re == NULL) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "ngx_http_add_allow_origin_regex: failed to push new element into array");
         return NGX_ERROR;
     }
 
     name->len--;
     name->data++;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0,
+                   "ngx_http_add_allow_origin_regex: adjusted regex string to \"%V\"", name);
 
     ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
 
@@ -943,12 +975,19 @@ ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
     rc.err.data = errstr;
 
     if (ngx_regex_compile(&rc) != NGX_OK) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%V", &rc.err);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "ngx_http_add_allow_origin_regex: regex compile error: %V", &rc.err);
         return NGX_ERROR;
     }
 
+    ngx_log_debug1(NGX_LOG_DEBUG_CORE, cf->log, 0,
+                   "ngx_http_add_allow_origin_regex: regex compiled successfully");
+
     re->regex = rc.regex;
     re->name = name->data;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_CORE, cf->log, 0,
+                   "ngx_http_add_allow_origin_regex: stored regex %p, name: \"%s\"",
+                   re->regex, re->name);
 
     return NGX_OK;
 }
