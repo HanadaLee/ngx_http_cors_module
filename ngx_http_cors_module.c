@@ -917,7 +917,8 @@ ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
     }
 
     if (colcf->allow_origins_regex == NGX_CONF_UNSET_PTR) {
-        colcf->allow_origins_regex = ngx_array_create(cf->pool, 2, sizeof(ngx_regex_elt_t));
+        colcf->allow_origins_regex = ngx_array_create(cf->pool, 2,
+            sizeof(ngx_regex_elt_t));
         if (colcf->allow_origins_regex == NULL) {
             return NGX_ERROR;
         }
@@ -1027,7 +1028,8 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
 
         if (colcf->allow_origins == NULL) {
-            colcf->allow_origins = ngx_array_create(cf->pool, 4, sizeof(ngx_http_cors_val_t));
+            colcf->allow_origins = ngx_array_create(cf->pool, 4,
+                sizeof(ngx_http_cors_val_t));
             if (colcf->allow_origins == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -1167,8 +1169,9 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        if (ngx_http_cors_search_string(ngx_http_cors_safelisted_request_headers,
-                    &value[i], 1)) {
+        if (ngx_http_cors_search_string(
+                ngx_http_cors_safelisted_request_headers, &value[i], 1))
+        {
             continue;
         }
 
@@ -1208,8 +1211,8 @@ ngx_http_cors_expose_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     for (i = 1; i < cf->args->nelts; i++) {
 
-        if (ngx_http_cors_search_string(ngx_http_cors_safelisted_response_headers,
-                    &value[i], 1)) {
+        if (ngx_http_cors_search_string(
+                ngx_http_cors_safelisted_response_headers, &value[i], 1)) {
             continue;
         }
 
@@ -1286,12 +1289,14 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->allow_methods_mode == NGX_CONF_UNSET) {
         conf->allow_methods = prev->allow_methods;
-        ngx_conf_merge_value(conf->allow_methods_mode, prev->allow_methods_mode, 1);
+        ngx_conf_merge_value(conf->allow_methods_mode,
+            prev->allow_methods_mode, 1);
     }
 
     if (conf->allow_headers_mode == NGX_CONF_UNSET) {
         conf->allow_headers = prev->allow_headers;
-        ngx_conf_merge_value(conf->allow_headers_mode, prev->allow_headers_mode, 1);
+        ngx_conf_merge_value(conf->allow_headers_mode,
+            prev->allow_headers_mode, 1);
     }
 
     if (conf->expose_headers == NULL) {
