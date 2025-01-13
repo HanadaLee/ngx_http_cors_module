@@ -598,64 +598,37 @@ ngx_http_cors_search_list(ngx_array_t *arr, ngx_str_t *name,
     ngx_uint_t                   i, hash;
     ngx_http_cors_val_t         *elt;
 
-    if (arr == NULL) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                         "ngx_http_cors_search_list: invalid parameter (array is NULL)");
-        return 0;
-    }
-
-    if (name == NULL || name->len == 0) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                         "ngx_http_cors_search_list: invalid parameter (name is NULL/empty)");
+    if (arr == NULL || name == NULL || name->len == 0) {
         return 0;
     }
 
     if (case_insensitive) {
         hash = ngx_hash_key_lc(name->data, name->len);
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                       "ngx_http_cors_search_list: case_insensitive, computed hash: %ui", hash);
     }
     else {
         hash = ngx_hash_key(name->data, name->len);
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                       "ngx_http_cors_search_list: case sensitive, computed hash: %ui", hash);
     }
 
     elt = arr->elts;
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                   "ngx_http_cors_search_list: iterating array, total elements: %ui, target name: \"%V\"",
-                   arr->nelts, name);
-
     for (i = 0; i < arr->nelts; i++) {
-
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                       "ngx_http_cors_search_list: comparing element %ui, element hash: %ui",
-                       i, elt[i].hash);
-
         if (elt[i].hash != hash) {
             continue;
         }
 
         if (!case_insensitive && elt[i].value.len == name->len
-                && ngx_strncmp(elt[i].value.data, name->data, name->len) == 0)
+            && ngx_strncmp(elt[i].value.data, name->data, name->len) == 0)
         {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                           "ngx_http_cors_search_list: match found at element %ui (case sensitive)", i);
             return 1;
         }
 
         if (case_insensitive && elt[i].value.len == name->len
-                && ngx_strncasecmp(elt[i].value.data, name->data, name->len) == 0)
+            && ngx_strncasecmp(elt[i].value.data, name->data, name->len) == 0)
         {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                           "ngx_http_cors_search_list: match found at element %ui (case insensitive)", i);
             return 1;
         }
     }
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
-                   "ngx_http_cors_search_list: no match found");
     return 0;
 }
 
