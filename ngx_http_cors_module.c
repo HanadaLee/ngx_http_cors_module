@@ -74,7 +74,7 @@ static ngx_int_t ngx_http_cors_init(ngx_conf_t *cf);
 
 #if (NGX_PCRE)
 static ngx_int_t ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
-    ngx_array_t *origins, ngx_str_t *name);
+    ngx_http_cors_loc_conf_t *colcf, ngx_str_t *name);
 #endif
 static ngx_int_t ngx_http_add_allow_origin(ngx_conf_t *cf,
     ngx_array_t *origins, ngx_str_t *value);
