@@ -426,7 +426,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
     /* Step 2 */
 step_2:
     if (colcf->allow_methods_mode == 2) {
-        allow_methods = &ngx_http_cors_response_methods_**;
+        allow_methods = &ngx_http_cors_response_methods_unbounded;
 
     } else if (colcf->allow_methods_mode == 1) {
         allow_methods = &ngx_http_cors_response_value_wildcard;
