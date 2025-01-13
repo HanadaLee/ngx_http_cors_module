@@ -38,9 +38,9 @@ typedef struct {
     ngx_array_t               *allow_headers;
     ngx_array_t               *expose_headers;
     ngx_flag_t                 enable;
-    ngx_int_t                  origin_unbounded;
-    ngx_int_t                  method_unbounded;
-    ngx_int_t                  header_unbounded;
+    ngx_int_t                  allow_origins_mode;
+    ngx_int_t                  allow_methods_mode;
+    ngx_int_t                  allow_headers_mode;
     ngx_flag_t                 allow_credentials;
     time_t                     max_age;
 
@@ -72,6 +72,12 @@ static char *ngx_http_cors_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
 static ngx_int_t ngx_http_cors_init(ngx_conf_t *cf);
 
+#if (NGX_PCRE)
+static ngx_int_t ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
+    ngx_array_t *origins, ngx_str_t *name);
+#endif
+static ngx_int_t ngx_http_add_allow_origin(ngx_conf_t *cf,
+    ngx_array_t *origins, ngx_str_t *value);
 static char *ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -332,7 +338,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
         "http cors header filter");
 
     /* Step 1 */
-    if (colcf->origin_unbounded == 2) {
+    if (colcf->allow_origins_mode == 2) {
         h = ngx_http_cors_search_header(&r->headers_in.headers,
                 &ngx_http_cors_request_origin_header);
 
@@ -346,7 +352,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
             allow_origin = &h->value;
         }
 
-    } else if (colcf->origin_unbounded == 1) {
+    } else if (colcf->allow_origins_mode == 1) {
         allow_origin = &ngx_http_cors_response_value_wildcard;
 
     } else {
@@ -389,10 +395,10 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
 
     /* Step 2 */
 step_2:
-    if (colcf->method_unbounded == 2) {
+    if (colcf->allow_methods_mode == 2) {
         allow_methods = &ngx_http_cors_response_methods_unbounded;
 
-    } else if (colcf->method_unbounded == 1) {
+    } else if (colcf->allow_methods_mode == 1) {
         allow_methods = &ngx_http_cors_response_value_wildcard;
 
     } else if (!preflight) {
@@ -430,7 +436,7 @@ step_2:
     }
 
     /* Step 3 */
-    if (colcf->header_unbounded == 2) {
+    if (colcf->allow_headers_mode == 2) {
         h = ngx_http_cors_search_header(&r->headers_in.headers,
                 &ngx_http_cors_request_headers_header);
 
@@ -444,7 +450,7 @@ step_2:
             allow_headers = &h->value;
         }
 
-    } else if (colcf->header_unbounded == 1) {
+    } else if (colcf->allow_headers_mode == 1) {
         allow_headers = &ngx_http_cors_response_value_wildcard;
 
     } else if (!preflight) {
@@ -986,15 +992,17 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    colcf->origin_unbounded = 0;
+    if (colcf->allow_origins_mode != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
 
     if (ngx_strcmp(value[1].data, "*") == 0) {
-        colcf->origin_unbounded = 1;
+        colcf->allow_origins_mode = 1;
         return NGX_CONF_OK;
     }
 
     if (ngx_strcmp(value[1].data, "**") == 0) {
-        colcf->origin_unbounded = 2;
+        colcf->allow_origins_mode = 2;
         return NGX_CONF_OK;
     }
 
@@ -1014,6 +1022,8 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                &value[i]);
             return NGX_CONF_ERROR;
         }
+
+        colcf->allow_origins_mode = 0;
 
 #if (NGX_PCRE)
         if (value[i].data[0] == '~') {
@@ -1047,17 +1057,19 @@ ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                 i, method;
     ngx_http_cors_val_t       *cov;
 
+    if (colcf->allow_methods_mode != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
     value = cf->args->elts;
 
-    colcf->method_unbounded = 0;
-
     if (ngx_strcmp(value[1].data, "*") == 0) {
-        colcf->method_unbounded = 1;
+        colcf->allow_methods_mode = 1;
         return NGX_CONF_OK;
     }
 
     if (ngx_strcmp(value[1].data, "**") == 0) {
-        colcf->method_unbounded = 2;
+        colcf->allow_methods_mode = 2;
         return NGX_CONF_OK;
     }
 
@@ -1085,6 +1097,8 @@ ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                &value[i]);
             return NGX_CONF_ERROR;
         }
+
+        colcf->allow_methods_mode = 0;
 
         cov = ngx_array_push(colcf->allow_methods);
         if (cov == NULL) {
@@ -1116,17 +1130,19 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                 i;
     ngx_http_cors_val_t       *cov;
 
+    if (colcf->allow_headers_mode != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
     value = cf->args->elts;
 
-    colcf->header_unbounded = 0;
-
     if (ngx_strcmp(value[1].data, "*") == 0) {
-        colcf->header_unbounded = 1;
+        colcf->allow_headers_mode = 1;
         return NGX_CONF_OK;
     }
 
     if (ngx_strcmp(value[1].data, "**") == 0) {
-        colcf->header_unbounded = 2;
+        colcf->allow_headers_mode = 2;
         return NGX_CONF_OK;
     }
 
@@ -1159,6 +1175,8 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     &value[i], 1)) {
             continue;
         }
+
+        colcf->allow_headers_mode = 0;
 
         cov = ngx_array_push(colcf->allow_headers);
         if (cov == NULL) {
@@ -1238,9 +1256,9 @@ ngx_http_cors_create_conf(ngx_conf_t *cf)
 #endif
 
     conf->enable = NGX_CONF_UNSET;
-    conf->origin_unbounded = NGX_CONF_UNSET;
-    conf->method_unbounded = NGX_CONF_UNSET;
-    conf->header_unbounded = NGX_CONF_UNSET;
+    conf->allow_origins_mode = NGX_CONF_UNSET;
+    conf->allow_methods_mode = NGX_CONF_UNSET;
+    conf->allow_headers_mode = NGX_CONF_UNSET;
     conf->allow_credentials = NGX_CONF_UNSET;
     conf->max_age = NGX_CONF_UNSET;
     conf->preflight_status = NGX_CONF_UNSET_UINT;
@@ -1255,32 +1273,29 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_cors_loc_conf_t *prev = parent;
     ngx_http_cors_loc_conf_t *conf = child;
 
-    if (conf->allow_origins == NULL
-#if (NGX_PCRE)
-        && conf->allow_origins_regex == NGX_CONF_UNSET_PTR
-#endif
-        && conf->origin_unbounded == NGX_CONF_UNSET)
-    {
+    if (conf->allow_origins_mode == NGX_CONF_UNSET) {
         conf->allow_origins = prev->allow_origins;
 #if (NGX_PCRE)
-        ngx_conf_merge_ptr_value(conf->allow_origins_regex, prev->allow_origins_regex, NULL);
+        ngx_conf_merge_ptr_value(conf->allow_origins_regex,
+            prev->allow_origins_regex, NULL);
 #endif
-        ngx_conf_merge_value(conf->origin_unbounded, prev->origin_unbounded,
-            1);
+        ngx_conf_merge_value(conf->allow_origins_mode,
+            prev->allow_origins_mode, 1);
+
+#if (NGX_PCRE)
+    } else if (conf->allow_origins_regex == NGX_CONF_UNSET_PTR) {
+        conf->allow_origins_regex = NULL;
+#endif
     }
 
-    if (conf->allow_methods == NULL
-        && conf->method_unbounded == NGX_CONF_UNSET)
-    {
+    if (conf->allow_methods_mode == NGX_CONF_UNSET) {
         conf->allow_methods = prev->allow_methods;
-        ngx_conf_merge_value(conf->method_unbounded, prev->method_unbounded, 1);
+        ngx_conf_merge_value(conf->allow_methods_mode, prev->allow_methods_mode, 1);
     }
 
-    if (conf->allow_headers == NULL
-        && conf->header_unbounded == NGX_CONF_UNSET)
-    {
+    if (conf->allow_headers_mode == NGX_CONF_UNSET) {
         conf->allow_headers = prev->allow_headers;
-        ngx_conf_merge_value(conf->header_unbounded, prev->header_unbounded, 1);
+        ngx_conf_merge_value(conf->allow_headers_mode, prev->allow_headers_mode, 1);
     }
 
     if (conf->expose_headers == NULL) {
@@ -1294,21 +1309,21 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         NGX_HTTP_OK);
 
     if (conf->allow_credentials == 1) {
-        if (conf->origin_unbounded == 1) {
+        if (conf->allow_origins_mode == 1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"cors_allow_origins\" can not be \"*\" if "
                                "\"cors_allow_credential\" is enabled");
             return NGX_CONF_ERROR;
         }
 
-        if (conf->method_unbounded == 1) {
+        if (conf->allow_methods_mode == 1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"cors_allow_methods\" can not be \"*\" if "
                                "\"cors_allow_credential\" is enabled");
             return NGX_CONF_ERROR;
         }
 
-        if (conf->header_unbounded == 1) {
+        if (conf->allow_headers_mode == 1) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"cors_allow_headers\" can not be \"*\" if "
                                "\"cors_allow_credential\" is enabled");
@@ -1320,7 +1335,7 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         && conf->preflight_status != NGX_HTTP_NO_CONTENT)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "only 200 and 206 can be used for "
+                           "only 200 and 204 can be used for "
                            "preflight responses");
         return NGX_CONF_ERROR;
     }
