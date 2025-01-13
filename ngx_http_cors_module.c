@@ -225,7 +225,7 @@ static ngx_str_t ngx_http_cors_safelisted_request_headers[] = {
 
 #if 0
 /* case-insensitive */
-static ngx_str_t simple_types[] = {
+static ngx_str_t ngx_http_cors_simple_types[] = {
     ngx_string("application/x-www-form-urlencoded"),
     ngx_string("multipart/form-data"),
     ngx_string("text/plain"),
@@ -361,8 +361,8 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
 
         allow_origin = &h->value;
 
-        if (ngx_http_cors_search_list(colcf->allow_origins, allow_origin, 0)) {
-            goto step_2;
+        if (ngx_http_cors_search_list(colcf->allow_origins, allow_origin, 1)) {
+            goto step2;
         }
 
 #if (NGX_PCRE)
@@ -388,7 +388,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
     }
 
     /* Step 2 */
-step_2:
+step2:
     if (colcf->method_unbounded == 2) {
         allow_methods = &ngx_http_cors_response_methods_unbounded;
 
@@ -969,7 +969,8 @@ ngx_http_add_allow_origin(ngx_conf_t *cf,
     }
 
     cov->hash = ngx_hash_key(value->data, value->len);
-    cov->value = *value;
+    cov->value.data = value->data;
+    cov->value.len = value->len;
 
     return NGX_OK;
 }
@@ -1141,7 +1142,7 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (value[i].len == 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid method \"%V\"", &value[i]);
+                               "invalid header \"%V\"", &value[i]);
             return NGX_CONF_ERROR;
         }
 
@@ -1152,6 +1153,11 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "\"%V\" cannot be used with other headers",
                                &value[i]);
             return NGX_CONF_ERROR;
+        }
+
+        if (ngx_http_cors_search_string(ngx_http_cors_safelisted_request_headers,
+                    &value[i], 1)) {
+            continue;
         }
 
         cov = ngx_array_push(colcf->allow_headers);
@@ -1220,13 +1226,16 @@ ngx_http_cors_create_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     conf->allow_origins = NULL;
-     *     conf->allow_origins_regex = NULL;
      *     conf->allow_methods = NULL;
      *     conf->allow_headers = NULL;
      *     conf->expose_headers = NULL;
      *     conf->preflight_status = 0;
      *
      */
+
+#if (NGX_PCRE)
+    conf->allow_origins_regex = NGX_CONF_UNSET_PTR;
+#endif
 
     conf->enable = NGX_CONF_UNSET;
     conf->origin_unbounded = NGX_CONF_UNSET;
