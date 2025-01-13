@@ -933,7 +933,7 @@ ngx_http_cors_init(ngx_conf_t *cf)
 #if (NGX_PCRE)
 static ngx_int_t
 ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
-    ngx_array_t *origins, ngx_str_t *name)
+    ngx_http_cors_loc_conf_t *colcf, ngx_str_t *name)
 {
     ngx_regex_elt_t      *re;
     ngx_regex_compile_t   rc;
@@ -945,14 +945,14 @@ ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
         return NGX_ERROR;
     }
 
-    if (origins == NGX_CONF_UNSET_PTR) {
-        origins = ngx_array_create(cf->pool, 2, sizeof(ngx_regex_elt_t));
-        if (origins == NULL) {
+    if (colcf->allow_origins_regex == NGX_CONF_UNSET_PTR) {
+        colcf->allow_origins_regex = ngx_array_create(cf->pool, 2, sizeof(ngx_regex_elt_t));
+        if (colcf->allow_origins_regex == NULL) {
             return NGX_ERROR;
         }
     }
 
-    re = ngx_array_push(origins);
+    re = ngx_array_push(colcf->allow_origins_regex);
     if (re == NULL) {
         return NGX_ERROR;
     }
@@ -986,14 +986,6 @@ ngx_http_add_allow_origin(ngx_conf_t *cf,
     ngx_array_t *origins, ngx_str_t *value)
 {
     ngx_http_cors_val_t   *cov;
-
-    if (origins == NULL) {
-        origins = ngx_array_create(cf->pool, 4,
-                                   sizeof(ngx_http_cors_val_t));
-        if (origins == NULL) {
-            return NGX_ERROR;
-        }
-    }
 
     cov = ngx_array_push(origins);
     if (cov == NULL) {
@@ -1054,7 +1046,7 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_PCRE)
         if (value[i].data[0] == '~') {
             if (ngx_http_add_allow_origin_regex(cf,
-                colcf->allow_origins_regex, &value[i]) != NGX_OK)
+                colcf, &value[i]) != NGX_OK)
             {
                 return NGX_CONF_ERROR;
             }
@@ -1062,6 +1054,13 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 #endif
+
+        if (colcf->allow_origins == NULL) {
+            colcf->allow_origins = ngx_array_create(cf->pool, 4, sizeof(ngx_http_cors_val_t));
+            if (colcf->allow_origins == NULL) {
+                return NGX_CONF_ERROR;
+            }
+        }
 
         if (ngx_http_add_allow_origin(cf, colcf->allow_origins,
             &value[i]) != NGX_OK)
