@@ -34,51 +34,39 @@ http {
 
 This module implements the [CORS protocol](https://www.w3.org/TR/cors/) (2025-01-13 revision). It handles both simple requests and preflight requests by setting the appropriate `Access-Control-*` response headers.
 
+## Conditional configuration
+
+When `ngx_condition_module` is compiled, every directive in this module may
+also be used in `http when`, `server when`, and `location when` blocks.
+Different CORS fields are selected independently using their configuration
+order. Values defined in the current scope have priority over inherited
+fallbacks.
+
+```nginx
+condition trusted_origin str_eq $http_origin https://app.example.com;
+
+when trusted_origin {
+    cors on;
+    cors_allow_origins https://app.example.com;
+    cors_allow_methods GET POST OPTIONS;
+    cors_allow_headers Authorization;
+    cors_allow_credentials on;
+}
+```
+
+If conditional selection enables credentials together with a `*` origins,
+methods, or headers policy, the module logs an error and treats that policy as
+`**` for the current request.
+
 ## Directives
 
 ### cors
 
 **Syntax:** *cors on | off;*
 **Default:** *cors off;*
-**Context:** *http, server, location*
+**Context:** *http, server, location, http when, server when, location when*
 
 Master switch to enable CORS processing. When enabled, the module intercepts `OPTIONS` requests (preflight) and adds CORS headers to all responses that match the configured policies.
-
----
-
-### cors_bypass
-
-**Syntax:** *cors_bypass variable ...;*
-**Default:** *—*
-**Context:** *http, server, location*
-
-Defines conditions under which CORS processing is skipped. Accepts one or more Nginx variables. If any variable evaluates to a non-empty, non-zero value (i.e., not `""` and not `"0"`), CORS header injection and preflight handling are bypassed for that request.
-
-This is useful for conditionally disabling CORS for specific requests, such as same-origin requests or health checks.
-
-Examples:
-
-```nginx
-# Bypass CORS when the X-Bypass-CORS request header is set to any non-zero value
-cors_bypass $http_x_bypass_cors;
-
-# Bypass CORS based on a custom variable
-map $request_uri $cors_bypass {
-    ~^/healthcheck  1;
-    ~^/internal/    1;
-    default         0;
-}
-cors_bypass $cors_bypass;
-
-# Bypass CORS when the request has no Origin header (same-origin)
-map $http_origin $same_origin {
-    ""              1;
-    default         0;
-}
-cors_bypass $same_origin;
-```
-
-When omitted, CORS headers are applied to all requests.
 
 ---
 
@@ -86,12 +74,12 @@ When omitted, CORS headers are applied to all requests.
 
 **Syntax:** *cors_allow_origins \* | \*\* | origin ...;*
 **Default:** *cors_allow_origins \*;*
-**Context:** *http, server, location*
+**Context:** *http, server, location, http when, server when, location when*
 
 Specifies which origins are allowed to access the resource. Supports three modes:
 
 - **`*`** — Wildcard mode. The response always contains `Access-Control-Allow-Origin: *`. Cannot be used together with `cors_allow_credentials on`.
-- **`**`** — Reflect mode. Echoes the request's `Origin` header back in the response. If no `Origin` header is present, falls back to `*` (or empty string when credentials are enabled). This is the most common choice for APIs that need to support multiple known origins.
+- **`**`** — Reflect mode. Echoes the request's `Origin` header back in the response. If no `Origin` header is present, falls back to `*` when credentials are disabled and omits `Access-Control-Allow-Origin` when credentials are enabled. This is the most common choice for APIs that need to support multiple known origins.
 - **Explicit origins** — A space-separated list of allowed origins. Only requests whose `Origin` matches one of the listed origins will receive CORS headers. If the `Origin` does not match, no CORS headers are added and the request proceeds without them.
 
 Origins can be specified as exact strings or, if PCRE support is compiled into Nginx, as regex patterns prefixed with `~`:
@@ -112,7 +100,7 @@ cors_allow_origins ~^https?://.*\.example\.com$ ~^https?://localhost:\d+$;
 
 **Syntax:** *cors_allow_methods \* | \*\* | method ...;*
 **Default:** *\*;*
-**Context:** *http, server, location*
+**Context:** *http, server, location, http when, server when, location when*
 
 Specifies which HTTP methods are allowed for cross-origin requests. Supports three modes:
 
@@ -132,12 +120,12 @@ cors_allow_methods GET POST PUT;
 
 **Syntax:** *cors_allow_headers \* | \*\* | header ...;*
 **Default:** *\*;*
-**Context:** *http, server, location*
+**Context:** *http, server, location, http when, server when, location when*
 
 Specifies which request headers are allowed for cross-origin requests. Supports three modes:
 
 - **`*`** — Wildcard mode. The response contains `Access-Control-Allow-Headers: *`. Cannot be used with `cors_allow_credentials on`.
-- **`**`** — Reflect mode. Echoes the request's `Access-Control-Request-Headers` value back in the response. If no such header is present, falls back to `*` (or empty string when credentials are enabled).
+- **`**`** — Reflect mode. Echoes the request's `Access-Control-Request-Headers` value back in the response. If no such header is present, falls back to `*` when credentials are disabled and omits `Access-Control-Allow-Headers` when credentials are enabled.
 - **Explicit headers** — A space-separated list of allowed header field names.
 
 The following safelisted headers are always allowed and will be silently skipped if you include them in the configuration: `Accept`, `Accept-Language`, `Content-Language`, `Content-Type`, `Range`.
@@ -152,7 +140,7 @@ cors_allow_headers X-Custom-Header Authorization Content-Type;
 
 **Syntax:** *cors_expose_headers header ...;*
 **Default:** *—*
-**Context:** *http, server, location*
+**Context:** *http, server, location, http when, server when, location when*
 
 Specifies which response headers are safe to expose to the browser via `Access-Control-Expose-Headers`. By default, browsers only expose a limited set of response headers (the safelisted response headers: `Cache-Control`, `Content-Language`, `Content-Length`, `Content-Type`, `Expires`, `Last-Modified`, `Pragma`). Use this directive to expose additional headers.
 
@@ -168,7 +156,7 @@ cors_expose_headers X-Total-Count X-Request-Id;
 
 **Syntax:** *cors_max_age time;*
 **Default:** *—*
-**Context:** *http, server, location*
+**Context:** *http, server, location, http when, server when, location when*
 
 Specifies how long (in seconds) the browser is allowed to cache the preflight response via `Access-Control-Max-Age`. Common values: `3600` (1 hour), `86400` (1 day). When set to `0` or not configured, the header is omitted.
 
@@ -182,11 +170,11 @@ cors_max_age 3600;
 
 **Syntax:** *cors_allow_credentials on | off;*
 **Default:** *cors_allow_credentials off;*
-**Context:** *http, server, location*
+**Context:** *http, server, location, http when, server when, location when*
 
 Enables `Access-Control-Allow-Credentials: true`, allowing requests to include credentials (cookies, HTTP authentication, client certificates).
 
-**Important:** When credentials are enabled, wildcard `*` cannot be used for `cors_allow_origins`, `cors_allow_methods`, or `cors_allow_headers`. Use `**` (reflect mode) or explicit values instead. Nginx will refuse to start if this rule is violated.
+**Important:** When credentials are enabled, wildcard `*` cannot be used for `cors_allow_origins`, `cors_allow_methods`, or `cors_allow_headers`. Use `**` or explicit values instead. Without `ngx_condition_module`, Nginx refuses to start if this rule is violated. With conditional configuration, a conflict selected at request time is logged and the affected `*` policy is treated as `**` for that request.
 
 ```nginx
 cors_allow_credentials on;
@@ -199,7 +187,7 @@ cors_allow_origins https://app.example.com;
 
 **Syntax:** *cors_preflight_status 200 | 204;*
 **Default:** *cors_preflight_status 200;*
-**Context:** *http, server, location*
+**Context:** *http, server, location, http when, server when, location when*
 
 Specifies the HTTP status code returned for preflight (`OPTIONS`) requests. Only `200` and `204` are valid values.
 
@@ -211,7 +199,9 @@ cors_preflight_status 204;
 
 ### Credential + Wildcard Restriction
 
-The CORS specification prohibits using `Access-Control-Allow-Origin: *` together with credentials. This module enforces this rule at configuration time:
+The CORS specification prohibits using wildcard CORS response fields together
+with credentials. Without `ngx_condition_module`, this module enforces the
+restriction at configuration time:
 
 ```nginx
 # This will cause a configuration error:
@@ -226,6 +216,12 @@ cors_allow_origins **;              # OK — echoes request origin
 cors_allow_methods GET POST;        # OK — explicit list
 cors_allow_headers Authorization;   # OK — explicit list
 ```
+
+With conditional configuration, the final values are selected at request time.
+If credentials and a `*` policy are selected together, the module logs an error
+and treats only the conflicting policy as `**` for that request. Origins and
+headers are reflected from the request, while methods use the full standard
+method list.
 
 ### Preflight Request Handling
 
