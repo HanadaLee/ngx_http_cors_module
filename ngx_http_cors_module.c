@@ -274,11 +274,11 @@ static ngx_http_module_t  ngx_http_cors_module_ctx = {
     NULL,                                       /* create main configuration */
     NULL,                                       /* init main configuration */
 
-    NULL,                                       /* create server configuration */
-    NULL,                                       /* merge server configuration */
+    NULL,                                       /* create server conf */
+    NULL,                                       /* merge server conf */
 
-    ngx_http_cors_create_conf,                  /* create location configuration */
-    ngx_http_cors_merge_conf                    /* merge location configuration */
+    ngx_http_cors_create_conf,                  /* create location conf */
+    ngx_http_cors_merge_conf                    /* merge location conf */
 };
 
 
@@ -369,23 +369,23 @@ static ngx_str_t ngx_http_cors_safelisted_response_headers[] = {
 
 
 static ngx_http_cors_method_name_t  ngx_http_cors_methods_names[] = {
-   { (u_char *) "GET",       (uint32_t) NGX_HTTP_GET },
-   { (u_char *) "HEAD",      (uint32_t) NGX_HTTP_HEAD },
-   { (u_char *) "POST",      (uint32_t) NGX_HTTP_POST },
-   { (u_char *) "PUT",       (uint32_t) NGX_HTTP_PUT },
-   { (u_char *) "DELETE",    (uint32_t) NGX_HTTP_DELETE },
-   { (u_char *) "MKCOL",     (uint32_t) NGX_HTTP_MKCOL },
-   { (u_char *) "COPY",      (uint32_t) NGX_HTTP_COPY },
-   { (u_char *) "MOVE",      (uint32_t) NGX_HTTP_MOVE },
-   { (u_char *) "OPTIONS",   (uint32_t) NGX_HTTP_OPTIONS },
-   { (u_char *) "PROPFIND" , (uint32_t) NGX_HTTP_PROPFIND },
-   { (u_char *) "PROPPATCH", (uint32_t) NGX_HTTP_PROPPATCH },
-   { (u_char *) "LOCK",      (uint32_t) NGX_HTTP_LOCK },
-   { (u_char *) "UNLOCK",    (uint32_t) NGX_HTTP_UNLOCK },
-   { (u_char *) "PATCH",     (uint32_t) NGX_HTTP_PATCH },
-   { (u_char *) "TRACE",     (uint32_t) NGX_HTTP_TRACE },
-   { (u_char *) "CONNECT",   (uint32_t) NGX_HTTP_CONNECT },
-   { NULL, 0 }
+    { (u_char *) "GET",       (uint32_t) NGX_HTTP_GET },
+    { (u_char *) "HEAD",      (uint32_t) NGX_HTTP_HEAD },
+    { (u_char *) "POST",      (uint32_t) NGX_HTTP_POST },
+    { (u_char *) "PUT",       (uint32_t) NGX_HTTP_PUT },
+    { (u_char *) "DELETE",    (uint32_t) NGX_HTTP_DELETE },
+    { (u_char *) "MKCOL",     (uint32_t) NGX_HTTP_MKCOL },
+    { (u_char *) "COPY",      (uint32_t) NGX_HTTP_COPY },
+    { (u_char *) "MOVE",      (uint32_t) NGX_HTTP_MOVE },
+    { (u_char *) "OPTIONS",   (uint32_t) NGX_HTTP_OPTIONS },
+    { (u_char *) "PROPFIND" , (uint32_t) NGX_HTTP_PROPFIND },
+    { (u_char *) "PROPPATCH", (uint32_t) NGX_HTTP_PROPPATCH },
+    { (u_char *) "LOCK",      (uint32_t) NGX_HTTP_LOCK },
+    { (u_char *) "UNLOCK",    (uint32_t) NGX_HTTP_UNLOCK },
+    { (u_char *) "PATCH",     (uint32_t) NGX_HTTP_PATCH },
+    { (u_char *) "TRACE",     (uint32_t) NGX_HTTP_TRACE },
+    { (u_char *) "CONNECT",   (uint32_t) NGX_HTTP_CONNECT },
+    { NULL, 0 }
 };
 
 
@@ -452,15 +452,9 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
     ngx_int_t                          rc;
 #endif
 
-#if (NGX_CONDITION)
     ngx_flag_t                         enable;
     ngx_flag_t                         allow_credentials;
     time_t                             max_age;
-    ngx_http_cors_allow_origins_ctx_t  *ao_ctx;
-    ngx_http_cors_allow_methods_ctx_t  *am_ctx;
-    ngx_http_cors_allow_headers_ctx_t  *ah_ctx;
-    ngx_http_cors_expose_headers_ctx_t *eh_ctx;
-
     ngx_array_t                       *allow_origins_arr;
 #if (NGX_PCRE)
     ngx_array_t                       *allow_origins_regex_arr;
@@ -472,16 +466,18 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
     ngx_int_t                          allow_origins_mode;
     ngx_int_t                          allow_methods_mode;
     ngx_int_t                          allow_headers_mode;
+
+#if (NGX_CONDITION)
+    ngx_http_cors_allow_origins_ctx_t  *ao_ctx;
+    ngx_http_cors_allow_methods_ctx_t  *am_ctx;
+    ngx_http_cors_allow_headers_ctx_t  *ah_ctx;
+    ngx_http_cors_expose_headers_ctx_t *eh_ctx;
 #endif
 
     colcf = ngx_http_get_module_loc_conf(r, ngx_http_cors_module);
 
 #if (NGX_CONDITION)
     enable = ngx_http_get_conditional_flag_value(r, colcf->enable);
-    if (!enable) {
-        return ngx_http_next_header_filter(r);
-    }
-
     allow_credentials = ngx_http_get_conditional_flag_value(r,
                             colcf->allow_credentials);
     max_age = ngx_http_get_conditional_sec_value(r, colcf->max_age);
@@ -512,6 +508,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
         allow_origins_regex_arr = ao_ctx->allow_origins_regex;
 #endif
         allow_origins_mode = ao_ctx->allow_origins_mode;
+
     } else {
         allow_origins_arr = NULL;
 #if (NGX_PCRE)
@@ -523,6 +520,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
     if (am_ctx != NULL) {
         allow_methods_arr = am_ctx->allow_methods;
         allow_methods_mode = am_ctx->allow_methods_mode;
+
     } else {
         allow_methods_arr = NULL;
         allow_methods_mode = 1; /* default: wildcard */
@@ -531,6 +529,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
     if (ah_ctx != NULL) {
         allow_headers_arr = ah_ctx->allow_headers;
         allow_headers_mode = ah_ctx->allow_headers_mode;
+
     } else {
         allow_headers_arr = NULL;
         allow_headers_mode = 1; /* default: wildcard */
@@ -538,6 +537,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
 
     if (eh_ctx != NULL) {
         expose_headers_arr = eh_ctx->expose_headers;
+
     } else {
         expose_headers_arr = NULL;
     }
@@ -548,7 +548,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
 
             ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
                           "\"cors_allow_origins *\" conflicts with "
-                          "\"cors_allow_credentials on\", fallback to "
+                          "\"cors_allow_credentials on\", using "
                           "\"cors_allow_origins **\"");
         }
 
@@ -557,7 +557,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
 
             ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
                           "\"cors_allow_methods *\" conflicts with "
-                          "\"cors_allow_credentials on\", fallback to "
+                          "\"cors_allow_credentials on\", using "
                           "\"cors_allow_methods **\"");
         }
 
@@ -566,69 +566,72 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
 
             ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
                           "\"cors_allow_headers *\" conflicts with "
-                          "\"cors_allow_credentials on\", fallback to "
+                          "\"cors_allow_credentials on\", using "
                           "\"cors_allow_headers **\"");
         }
     }
 #else
-    if (!colcf->enable) {
+    enable = colcf->enable;
+    allow_credentials = colcf->allow_credentials;
+    max_age = colcf->max_age;
+    allow_origins_arr = colcf->allow_origins;
+#if (NGX_PCRE)
+    allow_origins_regex_arr = colcf->allow_origins_regex;
+#endif
+    allow_methods_arr = colcf->allow_methods;
+    allow_headers_arr = colcf->allow_headers;
+    expose_headers_arr = colcf->expose_headers;
+    allow_origins_mode = colcf->allow_origins_mode;
+    allow_methods_mode = colcf->allow_methods_mode;
+    allow_headers_mode = colcf->allow_headers_mode;
+#endif
+
+    if (!enable) {
         return ngx_http_next_header_filter(r);
     }
 
-#endif
-
     if (r->method == NGX_HTTP_OPTIONS) {
         preflight = 1;
+
     } else {
         preflight = 0;
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-        "http cors header filter");
+                   "http cors header filter");
 
     /* Step 1 */
-#if (NGX_CONDITION)
     if (allow_origins_mode == 2) {
-#else
-    if (colcf->allow_origins_mode == 2) {
-#endif
         h = ngx_http_cors_search_header(&r->headers_in.headers,
-                &ngx_http_cors_request_origin_header);
+                                        &ngx_http_cors_request_origin_header);
 
         if (h == NULL) {
-#if (NGX_CONDITION)
             if (allow_credentials) {
-#else
-            if (colcf->allow_credentials) {
-#endif
                 allow_origin = NULL;
+
             } else {
                 allow_origin = &ngx_http_cors_response_value_wildcard;
             }
+
         } else {
             allow_origin = &h->value;
         }
 
-#if (NGX_CONDITION)
     } else if (allow_origins_mode == 1) {
-#else
-    } else if (colcf->allow_origins_mode == 1) {
-#endif
         allow_origin = &ngx_http_cors_response_value_wildcard;
 
     } else {
         h = ngx_http_cors_search_header(&r->headers_in.headers,
-                &ngx_http_cors_request_origin_header);
+                                        &ngx_http_cors_request_origin_header);
 
         if (h == NULL) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                "http cors origin header not found");
+                           "http cors origin header not found");
             goto leave;
         }
 
         allow_origin = &h->value;
 
-#if (NGX_CONDITION)
         if (ngx_http_cors_search_list(allow_origins_arr, allow_origin, 1)) {
             goto step_2;
         }
@@ -636,7 +639,7 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
 #if (NGX_PCRE)
         if (allow_origins_regex_arr != NULL) {
             rc = ngx_regex_exec_array(allow_origins_regex_arr,
-                    allow_origin, r->connection->log);
+                                      allow_origin, r->connection->log);
 
             if (rc == NGX_OK) {
                 goto step_2;
@@ -648,151 +651,88 @@ ngx_http_cors_header_filter(ngx_http_request_t *r)
         }
 
         /* NGX_DECLINED */
-#endif
-#else
-        if (ngx_http_cors_search_list(colcf->allow_origins, allow_origin, 1)) {
-            goto step_2;
-        }
-
-#if (NGX_PCRE)
-        if (colcf->allow_origins_regex) {
-            rc = ngx_regex_exec_array(colcf->allow_origins_regex,
-                    allow_origin, r->connection->log);
-
-            if (rc == NGX_OK) {
-                goto step_2;
-            }
-
-            if (rc == NGX_ERROR) {
-                return rc;
-            }
-        }
-
-        /* NGX_DECLINED */
-#endif
 #endif
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-            "http cors origin is not included in the list of allow origins");
+                       "http cors origin is not included in the list of "
+                       "allow origins");
         goto leave;
     }
 
     /* Step 2 */
 step_2:
-#if (NGX_CONDITION)
+
     if (allow_methods_mode == 2) {
-#else
-    if (colcf->allow_methods_mode == 2) {
-#endif
         allow_methods = &ngx_http_cors_response_methods_unbounded;
 
-#if (NGX_CONDITION)
     } else if (allow_methods_mode == 1) {
-#else
-    } else if (colcf->allow_methods_mode == 1) {
-#endif
         allow_methods = &ngx_http_cors_response_value_wildcard;
 
     } else if (!preflight) {
-#if (NGX_CONDITION)
-        allow_methods = ngx_http_cors_concatenate_list_value(r,
-            allow_methods_arr);
-#else
-        allow_methods = ngx_http_cors_concatenate_list_value(r,
-            colcf->allow_methods);
-#endif
+        allow_methods =
+            ngx_http_cors_concatenate_list_value(r, allow_methods_arr);
 
     } else {
         h = ngx_http_cors_search_header(&r->headers_in.headers,
-                &ngx_http_cors_request_method_header);
+                                        &ngx_http_cors_request_method_header);
         if (h == NULL) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                "http cors request method header not found");
+                           "http cors request method header not found");
             goto leave;
         }
 
         method = ngx_http_cors_get_method(&h->value);
         if (method == NGX_HTTP_UNKNOWN) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                    "http cors get unknown method");
+                           "http cors get unknown method");
             goto leave;
         }
 
         allow_methods = &h->value;
-#if (NGX_CONDITION)
         if (!ngx_http_cors_search_list(allow_methods_arr,
-            allow_methods, 0))
-#else
-        if (!ngx_http_cors_search_list(colcf->allow_methods,
-            allow_methods, 0))
-#endif
+                                       allow_methods, 0))
         {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                "http cors request method \"%V\" is not included in "
-                "the list of allow methods", allow_methods);
+                           "http cors request method \"%V\" is not included "
+                           "in the list of allow methods", allow_methods);
             goto leave;
         }
 
-#if (NGX_CONDITION)
-        allow_methods = ngx_http_cors_concatenate_list_value(r,
-            allow_methods_arr);
-#else
-        allow_methods = ngx_http_cors_concatenate_list_value(r,
-            colcf->allow_methods);
-#endif
+        allow_methods =
+            ngx_http_cors_concatenate_list_value(r, allow_methods_arr);
     }
 
     /* Step 3 */
-#if (NGX_CONDITION)
     if (allow_headers_mode == 2) {
-#else
-    if (colcf->allow_headers_mode == 2) {
-#endif
         h = ngx_http_cors_search_header(&r->headers_in.headers,
-                &ngx_http_cors_request_headers_header);
+                                        &ngx_http_cors_request_headers_header);
 
         if (h == NULL) {
-#if (NGX_CONDITION)
             if (allow_credentials) {
-#else
-            if (colcf->allow_credentials) {
-#endif
                 allow_headers = NULL;
+
             } else {
                 allow_headers = &ngx_http_cors_response_value_wildcard;
             }
+
         } else {
             allow_headers = &h->value;
         }
 
-#if (NGX_CONDITION)
     } else if (allow_headers_mode == 1) {
-#else
-    } else if (colcf->allow_headers_mode == 1) {
-#endif
         allow_headers = &ngx_http_cors_response_value_wildcard;
 
     } else if (!preflight) {
-#if (NGX_CONDITION)
-        allow_headers = ngx_http_cors_concatenate_list_value(r,
-            allow_headers_arr);
-#else
-        allow_headers = ngx_http_cors_concatenate_list_value(r,
-            colcf->allow_headers);
-#endif
+        allow_headers =
+            ngx_http_cors_concatenate_list_value(r, allow_headers_arr);
 
     } else {
         h = ngx_http_cors_search_header(&r->headers_in.headers,
-                &ngx_http_cors_request_headers_header);
+                                        &ngx_http_cors_request_headers_header);
 
         if (h == NULL) {
-#if (NGX_CONDITION)
             allow_headers = ngx_http_cors_concatenate_list_value(r,
-                allow_headers_arr);
-#else
-            allow_headers = ngx_http_cors_concatenate_list_value(r,
-            colcf->allow_headers);
-#endif
+                                allow_headers_arr);
 
         } else {
             field_names = ngx_array_create(r->pool, 4, sizeof(ngx_str_t));
@@ -800,8 +740,9 @@ step_2:
                 return NGX_ERROR;
             }
 
-            if (ngx_http_cors_split_string(&h->value, ',',
-                        field_names) == NULL) {
+            if (ngx_http_cors_split_string(&h->value, ',', field_names)
+                == NULL)
+            {
                 return NGX_ERROR;
             }
 
@@ -818,28 +759,19 @@ step_2:
                     continue;
                 }
 
-#if (NGX_CONDITION)
                 if (!ngx_http_cors_search_list(allow_headers_arr,
-                            &fnames[i], 1))
-#else
-                if (!ngx_http_cors_search_list(colcf->allow_headers,
-                            &fnames[i], 1))
-#endif
+                                               &fnames[i], 1))
                 {
                     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                        "http cors request header \"%V\" is not included in "
-                        "the list of allow headers", &fnames[i]);
+                                   "http cors request header \"%V\" is not "
+                                   "included in the list of allow headers",
+                                   &fnames[i]);
                     allow_headers = NULL;
                 }
             }
 
-#if (NGX_CONDITION)
             allow_headers = ngx_http_cors_concatenate_list_value(r,
-                allow_headers_arr);
-#else
-            allow_headers = ngx_http_cors_concatenate_list_value(r,
-            colcf->allow_headers);
-#endif
+                                allow_headers_arr);
         }
     }
 
@@ -855,25 +787,19 @@ step_2:
     if ((allow_origin == NULL || allow_origin->len == 0
          || ngx_strcmp(allow_origin->data, "*") != 0)
         && ngx_http_cors_add_header(&r->headers_out.headers,
-                &ngx_http_cors_response_vary_header,
-                &ngx_http_cors_request_origin_header)
+                                    &ngx_http_cors_response_vary_header,
+                                    &ngx_http_cors_request_origin_header)
             == NGX_ERROR)
     {
         return NGX_ERROR;
     }
 
     /* Step 6 */
-#if (NGX_CONDITION)
     if (allow_credentials
         && ngx_http_cors_set_header(&r->headers_out.headers,
-            &ngx_http_cors_response_credential_header,
-            &ngx_http_cors_response_value_true) == NGX_ERROR)
-#else
-    if (colcf->allow_credentials
-        && ngx_http_cors_set_header(&r->headers_out.headers,
-            &ngx_http_cors_response_credential_header,
-            &ngx_http_cors_response_value_true) == NGX_ERROR)
-#endif
+                                    &ngx_http_cors_response_credential_header,
+                                    &ngx_http_cors_response_value_true)
+           == NGX_ERROR)
     {
         return NGX_ERROR;
     }
@@ -895,15 +821,9 @@ step_2:
     }
 
     /* Step 9 */
-#if (NGX_CONDITION)
     if (expose_headers_arr && expose_headers_arr->nelts) {
         str_tmp = ngx_http_cors_concatenate_list_value(r,
-                expose_headers_arr);
-#else
-    if (colcf->expose_headers && colcf->expose_headers->nelts) {
-        str_tmp = ngx_http_cors_concatenate_list_value(r,
-                colcf->expose_headers);
-#endif
+                                                       expose_headers_arr);
 
         if (str_tmp && ngx_http_cors_set_header(&r->headers_out.headers,
                     &ngx_http_cors_response_expose_headers_header, str_tmp)
@@ -914,21 +834,13 @@ step_2:
     }
 
     /* Step 10 */
-#if (NGX_CONDITION)
     if (max_age) {
-#else
-    if (colcf->max_age) {
-#endif
         str_max_age.data = ngx_pcalloc(r->pool, 64);
         if (str_max_age.data == NULL) {
             return NGX_ERROR;
         }
 
-#if (NGX_CONDITION)
         last = ngx_snprintf(str_max_age.data, 64, "%T", max_age);
-#else
-        last = ngx_snprintf(str_max_age.data, 64, "%T", colcf->max_age);
-#endif
         str_max_age.len = last - str_max_age.data;
 
         if (ngx_http_cors_set_header(&r->headers_out.headers,
@@ -940,7 +852,7 @@ step_2:
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-            "http cors header filter done");
+                   "http cors header filter done");
 
     return ngx_http_next_header_filter(r);
 
@@ -968,6 +880,7 @@ ngx_http_cors_search_list(ngx_array_t *arr, ngx_str_t *name,
     if (case_insensitive) {
         hash = ngx_hash_key_lc(name->data, name->len);
     }
+
     else {
         hash = ngx_hash_key(name->data, name->len);
     }
@@ -999,8 +912,8 @@ ngx_http_cors_search_list(ngx_array_t *arr, ngx_str_t *name,
 static ngx_uint_t
 ngx_http_cors_get_method(ngx_str_t *method)
 {
-    ngx_uint_t                           i;
-    ngx_http_cors_method_name_t *m;
+    ngx_uint_t                     i;
+    ngx_http_cors_method_name_t   *m;
 
     m = ngx_http_cors_methods_names;
 
@@ -1044,7 +957,7 @@ ngx_http_cors_search_header(ngx_list_t *list, ngx_str_t *name)
         }
 
         if (h[i].key.len == name->len
-                && ngx_strncasecmp(h[i].key.data, name->data, name->len) == 0)
+            && ngx_strncasecmp(h[i].key.data, name->data, name->len) == 0)
         {
             return &h[i];
         }
@@ -1097,6 +1010,7 @@ ngx_http_cors_set_header(ngx_list_t *list, ngx_str_t *key,
         h->hash = 1;
         h->key = *key;
         h->value = *value;
+
     } else {
         if (value == NULL || value->len == 0) {
             h->hash = 0;
@@ -1112,7 +1026,7 @@ ngx_http_cors_set_header(ngx_list_t *list, ngx_str_t *key,
 
 static ngx_int_t
 ngx_http_cors_search_string(ngx_str_t *string_array, ngx_str_t *name,
-        ngx_flag_t case_insensitive)
+    ngx_flag_t case_insensitive)
 {
     ngx_str_t *s;
 
@@ -1124,13 +1038,13 @@ ngx_http_cors_search_string(ngx_str_t *string_array, ngx_str_t *name,
     while (s->len) {
 
         if (!case_insensitive && s->len == name->len
-                && ngx_strncmp(s->data, name->data, name->len) == 0)
+            && ngx_strncmp(s->data, name->data, name->len) == 0)
         {
             return 1;
         }
 
         if (case_insensitive && s->len == name->len
-                && ngx_strncasecmp(s->data, name->data, name->len) == 0)
+            && ngx_strncasecmp(s->data, name->data, name->len) == 0)
         {
             return 1;
         }
@@ -1150,7 +1064,7 @@ ngx_http_cors_concatenate_list_value(ngx_http_request_t *r,
     u_char                      *last, *end;
     ngx_str_t                   *s;
     ngx_uint_t                   i;
-    ngx_http_cors_val_t *elt;
+    ngx_http_cors_val_t         *elt;
 
     if (arr == NULL) {
         return NULL;
@@ -1216,7 +1130,7 @@ ngx_http_cors_split_string(ngx_str_t *str,
     last = str->data + str->len;
     pre = p = str->data;
 
-    while(p < last) {
+    while (p < last) {
 
         ts = ngx_array_push(arr);
         if (ts == NULL) {
@@ -1280,7 +1194,7 @@ ngx_http_add_allow_origin_regex(ngx_conf_t *cf,
 
     if (name->len == 1) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-            "empty regex in \"%V\"", name);
+                           "empty regex in \"%V\"", name);
         return NGX_ERROR;
     }
 
@@ -1357,8 +1271,8 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     ctx = ngx_condition_find_expr_ctx(colcf->allow_origins, expr_id,
-              sizeof(ngx_http_cors_allow_origins_ctx_t),
-              offsetof(ngx_http_cors_allow_origins_ctx_t, expr_id));
+        sizeof(ngx_http_cors_allow_origins_ctx_t),
+        offsetof(ngx_http_cors_allow_origins_ctx_t, expr_id));
 
     if (ctx == NULL) {
         ctx = ngx_array_push(colcf->allow_origins);
@@ -1436,7 +1350,7 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (ctx->allow_origins == NULL) {
             ctx->allow_origins = ngx_array_create(cf->pool, 4,
-                sizeof(ngx_http_cors_val_t));
+                                                  sizeof(ngx_http_cors_val_t));
             if (ctx->allow_origins == NULL) {
                 return NGX_CONF_ERROR;
             }
@@ -1451,6 +1365,7 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+
 
 static char *
 ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -1476,8 +1391,8 @@ ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     ctx = ngx_condition_find_expr_ctx(colcf->allow_methods, expr_id,
-              sizeof(ngx_http_cors_allow_methods_ctx_t),
-              offsetof(ngx_http_cors_allow_methods_ctx_t, expr_id));
+        sizeof(ngx_http_cors_allow_methods_ctx_t),
+        offsetof(ngx_http_cors_allow_methods_ctx_t, expr_id));
 
     if (ctx == NULL) {
         ctx = ngx_array_push(colcf->allow_methods);
@@ -1513,7 +1428,7 @@ ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ctx->allow_methods == NULL) {
         ctx->allow_methods = ngx_array_create(cf->pool, 4,
-                                         sizeof(ngx_http_cors_val_t));
+                                              sizeof(ngx_http_cors_val_t));
         if (ctx->allow_methods == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -1558,6 +1473,7 @@ ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+
 static char *
 ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -1582,8 +1498,8 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     ctx = ngx_condition_find_expr_ctx(colcf->allow_headers, expr_id,
-              sizeof(ngx_http_cors_allow_headers_ctx_t),
-              offsetof(ngx_http_cors_allow_headers_ctx_t, expr_id));
+        sizeof(ngx_http_cors_allow_headers_ctx_t),
+        offsetof(ngx_http_cors_allow_headers_ctx_t, expr_id));
 
     if (ctx == NULL) {
         ctx = ngx_array_push(colcf->allow_headers);
@@ -1619,7 +1535,7 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ctx->allow_headers == NULL) {
         ctx->allow_headers = ngx_array_create(cf->pool, 4,
-                                         sizeof(ngx_http_cors_val_t));
+                                              sizeof(ngx_http_cors_val_t));
         if (ctx->allow_headers == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -1661,6 +1577,7 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+
 
 static char *
 ngx_http_cors_expose_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -1704,7 +1621,7 @@ ngx_http_cors_expose_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ctx->expose_headers == NULL) {
         ctx->expose_headers = ngx_array_create(cf->pool, 4,
-                                         sizeof(ngx_http_cors_val_t));
+                                               sizeof(ngx_http_cors_val_t));
         if (ctx->expose_headers == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -1713,7 +1630,8 @@ ngx_http_cors_expose_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (i = 1; i < cf->args->nelts; i++) {
 
         if (ngx_http_cors_search_string(
-                ngx_http_cors_safelisted_response_headers, &value[i], 1)) {
+                ngx_http_cors_safelisted_response_headers, &value[i], 1))
+        {
             continue;
         }
 
@@ -1728,6 +1646,7 @@ ngx_http_cors_expose_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+
 
 static ngx_int_t
 ngx_http_cors_merge_conditional_allow_origins(ngx_conf_t *cf,
@@ -1750,7 +1669,7 @@ ngx_http_cors_merge_conditional_allow_origins(ngx_conf_t *cf,
 
         /* create default entry */
         *values = ngx_array_create(cf->pool, 1,
-            sizeof(ngx_http_cors_allow_origins_ctx_t));
+                                   sizeof(ngx_http_cors_allow_origins_ctx_t));
         if (*values == NULL) {
             return NGX_ERROR;
         }
@@ -1842,7 +1761,7 @@ ngx_http_cors_merge_conditional_allow_methods(ngx_conf_t *cf,
         }
 
         *values = ngx_array_create(cf->pool, 1,
-            sizeof(ngx_http_cors_allow_methods_ctx_t));
+                                   sizeof(ngx_http_cors_allow_methods_ctx_t));
         if (*values == NULL) {
             return NGX_ERROR;
         }
@@ -1926,7 +1845,7 @@ ngx_http_cors_merge_conditional_allow_headers(ngx_conf_t *cf,
         }
 
         *values = ngx_array_create(cf->pool, 1,
-            sizeof(ngx_http_cors_allow_headers_ctx_t));
+                                   sizeof(ngx_http_cors_allow_headers_ctx_t));
         if (*values == NULL) {
             return NGX_ERROR;
         }
@@ -2010,7 +1929,7 @@ ngx_http_cors_merge_conditional_expose_headers(ngx_conf_t *cf,
         }
 
         *values = ngx_array_create(cf->pool, 1,
-            sizeof(ngx_http_cors_expose_headers_ctx_t));
+                                   sizeof(ngx_http_cors_expose_headers_ctx_t));
         if (*values == NULL) {
             return NGX_ERROR;
         }
@@ -2158,6 +2077,7 @@ ngx_http_cors_allow_origins(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+
 static char *
 ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -2189,7 +2109,7 @@ ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (colcf->allow_methods == NULL) {
         colcf->allow_methods = ngx_array_create(cf->pool, 4,
-                                        sizeof(ngx_http_cors_val_t));
+                                                sizeof(ngx_http_cors_val_t));
         if (colcf->allow_methods == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -2234,6 +2154,7 @@ ngx_http_cors_allow_methods(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+
 static char *
 ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -2265,7 +2186,7 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (colcf->allow_headers == NULL) {
         colcf->allow_headers = ngx_array_create(cf->pool, 4,
-                                         sizeof(ngx_http_cors_val_t));
+                                                sizeof(ngx_http_cors_val_t));
         if (colcf->allow_headers == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -2308,6 +2229,7 @@ ngx_http_cors_allow_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+
 static char *
 ngx_http_cors_expose_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
@@ -2321,7 +2243,7 @@ ngx_http_cors_expose_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (colcf->expose_headers == NULL) {
         colcf->expose_headers = ngx_array_create(cf->pool, 4,
-                                        sizeof(ngx_http_cors_val_t));
+                                                 sizeof(ngx_http_cors_val_t));
         if (colcf->expose_headers == NULL) {
             return NGX_CONF_ERROR;
         }
@@ -2330,7 +2252,8 @@ ngx_http_cors_expose_headers(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (i = 1; i < cf->args->nelts; i++) {
 
         if (ngx_http_cors_search_string(
-                ngx_http_cors_safelisted_response_headers, &value[i], 1)) {
+                ngx_http_cors_safelisted_response_headers, &value[i], 1))
+        {
             continue;
         }
 
@@ -2456,12 +2379,13 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->allow_origins = prev->allow_origins;
 #if (NGX_PCRE)
         ngx_conf_merge_ptr_value(conf->allow_origins_regex,
-            prev->allow_origins_regex, NULL);
+                                 prev->allow_origins_regex, NULL);
 #endif
         ngx_conf_merge_value(conf->allow_origins_mode,
-            prev->allow_origins_mode, 1);
+                             prev->allow_origins_mode, 1);
 
 #if (NGX_PCRE)
+
     } else if (conf->allow_origins_regex == NGX_CONF_UNSET_PTR) {
         conf->allow_origins_regex = NULL;
 #endif
@@ -2470,13 +2394,13 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->allow_methods_mode == NGX_CONF_UNSET) {
         conf->allow_methods = prev->allow_methods;
         ngx_conf_merge_value(conf->allow_methods_mode,
-            prev->allow_methods_mode, 1);
+                             prev->allow_methods_mode, 1);
     }
 
     if (conf->allow_headers_mode == NGX_CONF_UNSET) {
         conf->allow_headers = prev->allow_headers;
         ngx_conf_merge_value(conf->allow_headers_mode,
-            prev->allow_headers_mode, 1);
+                             prev->allow_headers_mode, 1);
     }
 
     if (conf->expose_headers == NULL) {
@@ -2532,8 +2456,8 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                     && ps_ctx[i].value != NGX_HTTP_NO_CONTENT)
                 {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "only 200 and 204 can be used for "
-                               "preflight responses");
+                                       "only 200 and 204 can be used for "
+                                       "preflight responses");
                     return NGX_CONF_ERROR;
                 }
             }
