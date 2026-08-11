@@ -64,7 +64,7 @@ methods, or headers policy, the module logs an error and treats that policy as
 
 **Syntax:** *cors on | off;*
 **Default:** *cors off;*
-**Context:** *http, server, location, http when, server when, location when*
+**Context:** *http, server, location, when*
 
 Master switch to enable CORS processing. When enabled, the module intercepts `OPTIONS` requests (preflight) and adds CORS headers to all responses that match the configured policies.
 
@@ -74,7 +74,7 @@ Master switch to enable CORS processing. When enabled, the module intercepts `OP
 
 **Syntax:** *cors_allow_origins \* | \*\* | origin ...;*
 **Default:** *cors_allow_origins \*;*
-**Context:** *http, server, location, http when, server when, location when*
+**Context:** *http, server, location, when*
 
 Specifies which origins are allowed to access the resource. Supports three modes:
 
@@ -100,7 +100,7 @@ cors_allow_origins ~^https?://.*\.example\.com$ ~^https?://localhost:\d+$;
 
 **Syntax:** *cors_allow_methods \* | \*\* | method ...;*
 **Default:** *\*;*
-**Context:** *http, server, location, http when, server when, location when*
+**Context:** *http, server, location, when*
 
 Specifies which HTTP methods are allowed for cross-origin requests. Supports three modes:
 
@@ -120,7 +120,7 @@ cors_allow_methods GET POST PUT;
 
 **Syntax:** *cors_allow_headers \* | \*\* | header ...;*
 **Default:** *\*;*
-**Context:** *http, server, location, http when, server when, location when*
+**Context:** *http, server, location, when*
 
 Specifies which request headers are allowed for cross-origin requests. Supports three modes:
 
@@ -140,7 +140,7 @@ cors_allow_headers X-Custom-Header Authorization Content-Type;
 
 **Syntax:** *cors_expose_headers header ...;*
 **Default:** *—*
-**Context:** *http, server, location, http when, server when, location when*
+**Context:** *http, server, location, when*
 
 Specifies which response headers are safe to expose to the browser via `Access-Control-Expose-Headers`. By default, browsers only expose a limited set of response headers (the safelisted response headers: `Cache-Control`, `Content-Language`, `Content-Length`, `Content-Type`, `Expires`, `Last-Modified`, `Pragma`). Use this directive to expose additional headers.
 
@@ -156,7 +156,7 @@ cors_expose_headers X-Total-Count X-Request-Id;
 
 **Syntax:** *cors_max_age time;*
 **Default:** *—*
-**Context:** *http, server, location, http when, server when, location when*
+**Context:** *http, server, location, when*
 
 Specifies how long (in seconds) the browser is allowed to cache the preflight response via `Access-Control-Max-Age`. Common values: `3600` (1 hour), `86400` (1 day). When set to `0` or not configured, the header is omitted.
 
@@ -170,7 +170,7 @@ cors_max_age 3600;
 
 **Syntax:** *cors_allow_credentials on | off;*
 **Default:** *cors_allow_credentials off;*
-**Context:** *http, server, location, http when, server when, location when*
+**Context:** *http, server, location, when*
 
 Enables `Access-Control-Allow-Credentials: true`, allowing requests to include credentials (cookies, HTTP authentication, client certificates).
 
@@ -186,8 +186,8 @@ cors_allow_origins https://app.example.com;
 ### cors_preflight_status
 
 **Syntax:** *cors_preflight_status 200 | 204;*
-**Default:** *cors_preflight_status 200;*
-**Context:** *http, server, location, http when, server when, location when*
+**Default:** *cors_preflight_status 204;*
+**Context:** *http, server, location, when*
 
 Specifies the HTTP status code returned for preflight (`OPTIONS`) requests. Only `200` and `204` are valid values.
 

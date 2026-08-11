@@ -98,6 +98,13 @@ typedef struct {
 } ngx_http_cors_loc_conf_t;
 
 
+static ngx_conf_enum_t  ngx_http_cors_preflight_statuses[] = {
+    { ngx_string("200"), NGX_HTTP_OK },
+    { ngx_string("204"), NGX_HTTP_NO_CONTENT },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_int_t ngx_http_cors_rewrite_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_cors_search_list(ngx_array_t *arr,
         ngx_str_t *name, ngx_flag_t case_insensitive);
@@ -255,13 +262,13 @@ static ngx_command_t  ngx_http_cors_commands[] = {
 #endif
       |NGX_CONF_TAKE1,
 #if (NGX_CONDITION)
-      ngx_conf_set_conditional_num_slot,
+      ngx_conf_set_conditional_enum_slot,
 #else
-      ngx_conf_set_num_slot,
+      ngx_conf_set_enum_slot,
 #endif
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_cors_loc_conf_t, preflight_status),
-      NULL },
+      &ngx_http_cors_preflight_statuses },
 
       ngx_null_command
 };
@@ -420,8 +427,7 @@ ngx_http_cors_rewrite_handler(ngx_http_request_t *r)
 
 #if (NGX_CONDITION)
     r->headers_out.status =
-        (ngx_uint_t) ngx_http_get_conditional_num_value(r,
-            colcf->preflight_status);
+        ngx_http_get_conditional_enum_value(r, colcf->preflight_status);
 #else
     r->headers_out.status = colcf->preflight_status;
 #endif
@@ -2369,8 +2375,8 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_conf_merge_conditional_num_value(cf, &conf->preflight_status,
-            prev->preflight_status, NGX_HTTP_OK) != NGX_OK)
+    if (ngx_conf_merge_conditional_enum_value(cf, &conf->preflight_status,
+            prev->preflight_status, NGX_HTTP_NO_CONTENT) != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -2411,7 +2417,7 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->allow_credentials, prev->allow_credentials, 0);
     ngx_conf_merge_sec_value(conf->max_age, prev->max_age, 0);
     ngx_conf_merge_uint_value(conf->preflight_status, prev->preflight_status,
-        NGX_HTTP_OK);
+        NGX_HTTP_NO_CONTENT);
 #endif
 
 #if !(NGX_CONDITION)
@@ -2438,39 +2444,6 @@ ngx_http_cors_merge_conf(ngx_conf_t *cf, void *parent, void *child)
                                "\"cors_allow_credentials\" is enabled");
             return NGX_CONF_ERROR;
         }
-    }
-#endif
-
-#if (NGX_CONDITION)
-    {
-        ngx_uint_t                          i;
-        ngx_conf_condition_num_ctx_t       *ps_ctx;
-
-        if (conf->preflight_status != NULL
-            && conf->preflight_status != NGX_CONF_UNSET_PTR)
-        {
-            ps_ctx = conf->preflight_status->elts;
-            for (i = 0; i < conf->preflight_status->nelts; i++) {
-                if (ps_ctx[i].value != NGX_CONF_UNSET
-                    && ps_ctx[i].value != NGX_HTTP_OK
-                    && ps_ctx[i].value != NGX_HTTP_NO_CONTENT)
-                {
-                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "only 200 and 204 can be used for "
-                                       "preflight responses");
-                    return NGX_CONF_ERROR;
-                }
-            }
-        }
-    }
-#else
-    if (conf->preflight_status != NGX_HTTP_OK
-        && conf->preflight_status != NGX_HTTP_NO_CONTENT)
-    {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "only 200 and 204 can be used for "
-                           "preflight responses");
-        return NGX_CONF_ERROR;
     }
 #endif
 
