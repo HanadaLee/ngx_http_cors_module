@@ -434,8 +434,7 @@ ngx_http_cors_rewrite_handler(ngx_http_request_t *r)
     r->headers_out.content_length_n = 0;
     r->header_only = 1;
 
-    ngx_http_finalize_request(r, ngx_http_send_header(r));
-    return NGX_OK;
+    return ngx_http_send_header(r);
 }
 
 
@@ -772,7 +771,7 @@ step_2:
                                    "http cors request header \"%V\" is not "
                                    "included in the list of allow headers",
                                    &fnames[i]);
-                    allow_headers = NULL;
+                    goto leave;
                 }
             }
 
