@@ -18,7 +18,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http rewrite pcre ngx_condition_module
+my $t = Test::Nginx->new()->has(qw/http rewrite pcre ngx_expr_module
 	ngx_http_cors_module/)->plan(60);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
@@ -39,7 +39,7 @@ http {
 
         default_type text/plain;
 
-        condition trusted str_eq $arg_mode trusted;
+        expr trusted str_eq $arg_mode trusted;
 
         location = /exact {
             cors on;

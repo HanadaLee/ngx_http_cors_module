@@ -36,14 +36,14 @@ This module implements the [CORS protocol](https://www.w3.org/TR/cors/) (2025-01
 
 ## Conditional configuration
 
-When `ngx_condition_module` is compiled, every directive in this module may
+When `ngx_expr_module` is compiled, every directive in this module may
 also be used in `http when`, `server when`, and `location when` blocks.
 Different CORS fields are selected independently using their configuration
 order. Values defined in the current scope have priority over inherited
 fallbacks.
 
 ```nginx
-condition trusted_origin str_eq $http_origin https://app.example.com;
+expr trusted_origin str_eq $http_origin https://app.example.com;
 
 when trusted_origin {
     cors on;
@@ -174,7 +174,7 @@ cors_max_age 3600;
 
 Enables `Access-Control-Allow-Credentials: true`, allowing requests to include credentials (cookies, HTTP authentication, client certificates).
 
-**Important:** When credentials are enabled, wildcard `*` cannot be used for `cors_allow_origins`, `cors_allow_methods`, or `cors_allow_headers`. Use `**` or explicit values instead. Without `ngx_condition_module`, Nginx refuses to start if this rule is violated. With conditional configuration, a conflict selected at request time is logged and the affected `*` policy is treated as `**` for that request.
+**Important:** When credentials are enabled, wildcard `*` cannot be used for `cors_allow_origins`, `cors_allow_methods`, or `cors_allow_headers`. Use `**` or explicit values instead. Without `ngx_expr_module`, Nginx refuses to start if this rule is violated. With conditional configuration, a conflict selected at request time is logged and the affected `*` policy is treated as `**` for that request.
 
 ```nginx
 cors_allow_credentials on;
@@ -200,7 +200,7 @@ cors_preflight_status 204;
 ### Credential + Wildcard Restriction
 
 The CORS specification prohibits using wildcard CORS response fields together
-with credentials. Without `ngx_condition_module`, this module enforces the
+with credentials. Without `ngx_expr_module`, this module enforces the
 restriction at configuration time:
 
 ```nginx
